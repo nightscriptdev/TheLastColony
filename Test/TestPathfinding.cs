@@ -2,7 +2,7 @@
 using Components.Enemies;
 using Core.Grid;
 using Core.Pathfinding;
-using Data.Enemies;
+using Data;
 using UnityEngine;
 
 namespace Test

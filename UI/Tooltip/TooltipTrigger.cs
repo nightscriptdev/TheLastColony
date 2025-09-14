@@ -1,20 +1,21 @@
 ﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UI.Buildings;
+using UnityEngine.Serialization;
 
 namespace UI.Tooltip
 {
     public class TooltipTrigger : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         [TextArea(3, 10)]
-        [SerializeField] protected string staticTooltip = "";
+        [SerializeField] private string customTooltip = "";
         
         private BuildingButtonUI buildingButtonUI;
         
         public virtual void OnPointerEnter(PointerEventData eventData)
         {
-            if (!string.IsNullOrEmpty(staticTooltip))
-                TooltipManager.Instance.Show(staticTooltip);
+            if (!string.IsNullOrEmpty(customTooltip))
+                TooltipManager.Instance.Show(customTooltip);
             else
                 TooltipManager.Instance.Show(GetTooltip());
         }

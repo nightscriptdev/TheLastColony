@@ -5,9 +5,9 @@ using Components.Buildings;
 using Core;
 using Core.Grid;
 using Core.Pathfinding;
+using Data;
 using Managers;
 using UnityEngine;
-using Data.Enemies;
 using Enums;
 namespace Components.Enemies
 {

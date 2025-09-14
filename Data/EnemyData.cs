@@ -1,7 +1,7 @@
 ﻿using Enums;
 using UnityEngine;
 
-namespace Data.Enemies
+namespace Data
 {
     [CreateAssetMenu(fileName = "EnemyData", menuName = "Game Data/Enemy Data")]
     public class EnemyData : ScriptableObject

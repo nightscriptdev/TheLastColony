@@ -17,6 +17,7 @@ namespace UI.Buildings
         public BuildingData BuildingData => buildingData;
         
         private bool isAffordable;
+        private string staticTooltip;
 
         private void Awake()
         {

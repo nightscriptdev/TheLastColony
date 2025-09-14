@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Components.Enemies;
 using Core;
-using Data.Enemies;
+using Data;
 using Managers;
 using UnityEngine;
 
