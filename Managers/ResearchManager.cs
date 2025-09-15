@@ -13,34 +13,6 @@ namespace Managers
         
         private HashSet<ResearchData> completedResearches = new HashSet<ResearchData>();
         
-        void Start()
-        {
-            InitializeResearches();
-        }
-        
-        void InitializeResearches()
-        {
-            // 初始化已完成的基础研究（开局可用的建筑）
-            foreach (var research in allResearches)
-            {
-                if (IsBasicResearch(research))
-                {
-                    completedResearches.Add(research);
-                }
-            }
-        }
-        
-        bool IsBasicResearch(ResearchData research)
-        {
-            // 开局可用：房屋1级、农田、矿场、紫塔1级、拒敌水晶、黑暗冲击
-            return (research.unlockBuildingType == BuildingType.House && research.unlockBuildingLevel == 1) ||
-                   research.unlockBuildingType == BuildingType.Farm ||
-                   research.unlockBuildingType == BuildingType.Mine ||
-                   (research.unlockBuildingType == BuildingType.PurpleCrystalTower && research.unlockBuildingLevel == 1) ||
-                   research.unlockBuildingType == BuildingType.DefenseCrystal ||
-                   research.unlockSkill == SkillType.DarkImpact;
-        }
-        
         // 检查是否可以研究
         public bool CanResearch(ResearchData research)
         {
@@ -55,18 +27,6 @@ namespace Managers
             // 检查前置条件
             if (research.prerequisite!=null && !IsResearched(research.prerequisite))
                 return false;
-            
-            // 技能专精的特殊检查
-            if (research.type == ResearchType.SkillSpecialty)
-            {
-                // 需要所有技能都已研究
-                if (!AllSkillsResearched())
-                    return false;
-                    
-                // 专精互斥检查
-                if (HasAnySpecialty())
-                    return false;
-            }
             
             return true;
         }
@@ -122,7 +82,6 @@ namespace Managers
             return maxLevel;
         }
         
-        // 检查技能是否已解锁
         public bool IsSkillUnlocked(SkillType skillType)
         {
             foreach (var research in completedResearches)

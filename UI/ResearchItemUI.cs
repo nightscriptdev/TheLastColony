@@ -11,18 +11,17 @@ namespace UI
 {
     public class ResearchItemUI : TooltipTrigger
     {
-        [Header("UI组件")]
         public Image icon;
+        public Image completedImage;
         public TMP_Text nameText;
         public TMP_Text costText;
         public Button button;
     
-        private ResearchData research;
+        public ResearchData research;
         private ResearchUI researchUI;
     
-        public void Setup(ResearchData researchData, ResearchUI ui)
+        public void Setup(ResearchUI ui)
         {
-            research = researchData;
             researchUI = ui;
         
             // 设置基本信息
@@ -38,13 +37,15 @@ namespace UI
         public void RefreshState()
         {
             bool isResearched = ResearchManager.Instance.IsResearched(research);
-
+            
             // 按钮交互性
             button.interactable = ResearchManager.Instance.CanResearch(research);
 
             if (isResearched)
             {
-                Destroy(button.gameObject); // 露出已完成icon
+                completedImage.enabled = true;
+                if(button)
+                    Destroy(button.gameObject);
                 costText.text = "已研究";
             }
             else if (ResourceManager.Instance.Knowledge >= research.knowledgeCost)

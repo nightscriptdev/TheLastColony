@@ -8,35 +8,27 @@ namespace UI
 {
     public class ResearchUI : MonoBehaviour
     {
-        [Header("UI组件")]
         public GameObject researchPanel;
-        public Transform researchGrid;
-        public GameObject researchButtonPrefab;
-        public Button closeButton;
+        public Transform researchContent;
         public Button openButton;
+        public Button closeButton;
     
-        private List<ResearchItemUI> researchButtons = new List<ResearchItemUI>();
+        public List<ResearchItemUI> researchButtons = new List<ResearchItemUI>();
     
         void Start()
         {
-            closeButton.onClick.AddListener(CloseResearchPanel);
             openButton.onClick.AddListener(()=> researchPanel.SetActive(true));
+            closeButton.onClick.AddListener(()=> researchPanel.SetActive(false));
         
-            CreateResearchButtons();
-            CloseResearchPanel();
+            SetupItems();
+            researchPanel.SetActive(false);
         }
     
-        void CreateResearchButtons()
+        void SetupItems()
         {
-            foreach (var research in ResearchManager.Instance.allResearches)
+            foreach (var researchItemUI in researchButtons)
             {
-                GameObject buttonObj = Instantiate(researchButtonPrefab, researchGrid);
-                ResearchItemUI researchItemUI = buttonObj.GetComponent<ResearchItemUI>();
-                if (researchItemUI == null)
-                    researchItemUI = buttonObj.AddComponent<ResearchItemUI>();
-                
-                researchItemUI.Setup(research, this);
-                researchButtons.Add(researchItemUI);
+                researchItemUI.Setup(this);
             }
         }
     
@@ -44,11 +36,6 @@ namespace UI
         {
             researchPanel.SetActive(true);
             RefreshResearchButtons();
-        }
-    
-        public void CloseResearchPanel()
-        {
-            researchPanel.SetActive(false);
         }
     
         void RefreshResearchButtons()

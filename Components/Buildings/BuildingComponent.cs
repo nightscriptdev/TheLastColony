@@ -54,18 +54,6 @@ namespace Components.Buildings
         
         public Vector2Int GridPosition { get; private set; }
 
-
-        private void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.Q))
-            {
-                foreach (var keyValuePair in attackSlots)
-                {
-                    Debug.LogError(keyValuePair);
-                }
-            }
-        }
-
         protected virtual void Awake()
         {
             _healthComponent = GetComponent<HealthComponent>();

@@ -392,20 +392,20 @@ namespace Components.Enemies
         
         IEnumerator DamageFlash()
         {
-            /*spriteRenderer. material.SetColor(FlashColorID, Color.red);
+            spriteRenderer. material.SetColor(FlashColorID, Color.red);
             // 设置为完全闪白
             spriteRenderer. material.SetFloat(FlashAmountID, 1f);
             // 等待指定的持续时间
             yield return new WaitForSeconds(0.1f);
             // 恢复正常
-            spriteRenderer.material.SetFloat(FlashAmountID, 0f);*/
+            spriteRenderer.material.SetFloat(FlashAmountID, 0f);
             
-            // 设置为完全闪白
+            /*// 设置为完全闪白
             spriteRenderer.color = Color.red;
             // 等待指定的持续时间
             yield return new WaitForSeconds(0.1f);
             // 恢复正常
-            spriteRenderer.color = Color.white;
+            spriteRenderer.color = Color.white;*/
         }
         
         private void OnEnemyDeath()

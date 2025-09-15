@@ -37,6 +37,7 @@ namespace Core
     
         void OnEnable()
         {
+            initialKnowledge = 999999;
             // 订阅事件
             EventManager.OnDayStart += OnDayStart;
         }
