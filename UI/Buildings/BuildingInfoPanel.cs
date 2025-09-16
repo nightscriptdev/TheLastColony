@@ -1,8 +1,10 @@
-﻿using UnityEngine;
+﻿using Components;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Components.Buildings;
 using Core;
+using Data.Buildings;
 using Enums;
 using Managers;
 namespace UI.Buildings
@@ -17,12 +19,14 @@ namespace UI.Buildings
         [SerializeField] private TextMeshProUGUI buildingNameText;
         [SerializeField] private TextMeshProUGUI buildingInfoText;
         [SerializeField] private TextMeshProUGUI healthText;
-        [SerializeField] private Image healthBar;
+        [SerializeField] private HealthBarUI healthBar;
+        
         [Header("操作按钮")]
         [SerializeField] private TextMeshProUGUI buildingLevelText;
         [SerializeField] private Button upgradeButton;
         [SerializeField] private Button demolishButton;
         private BuildingComponent currentBuilding;
+        private HealthComponent currentHealthComponent;
         //private TowerComponent currentTower;
         
         private void Start()
@@ -32,47 +36,55 @@ namespace UI.Buildings
 
             if (demolishButton != null)
                 demolishButton.onClick.AddListener(OnDemolishClicked);
-            // 初始时隐藏面板
-            SetPanelVisible(false);
+            
+            Hide();
         }
         
         private void Update()
         {
-            // 实时更新选中建筑的信息
             if (currentBuilding != null && panelRoot.activeSelf)
             {
                 UpdateBuildingInfo();
             }
         }
-        /// <summary>
-        /// 显示建筑信息
-        /// </summary>
-        public void ShowBuildingInfo(BuildingComponent building)
+        
+        public void Show(BuildingComponent building)
         {
-            if (building == null) return;
             currentBuilding = building;
-            SetPanelVisible(true);
-            UpdateBuildingInfo();
+            panelRoot.SetActive(true);
         }
-        /// <summary>
-        /// 关闭面板
-        /// </summary>
-        public void ClosePanel()
+        public void Hide()
         {
             currentBuilding = null;
-            SetPanelVisible(false);
+            if (currentHealthComponent)
+            {
+                currentHealthComponent.OnDeath -= Hide;
+                currentHealthComponent.OnHealthChanged -= UpdateHealBar;
+                currentHealthComponent = null;
+            }
+
+            healthBar.StopAllCoroutines();
+            panelRoot.SetActive(false);
         }
-        /// <summary>
-        /// 更新建筑信息显示
-        /// </summary>
+
+        private void UpdateHealBar(int currentHealth, int maxHealth)
+        {
+            healthText.text = $"{currentHealth}/{maxHealth}";
+            healthBar.UpdateHealthBar(currentHealth, maxHealth);
+        }
+
         private void UpdateBuildingInfo()
         {
             var data = currentBuilding.Data;
-            var hpComponent = currentBuilding.GetComponent<Components.HealthComponent>();
+            if (currentHealthComponent == null)
+            {
+                currentHealthComponent = currentBuilding.GetComponent<HealthComponent>();
+                healthBar.InitializeHealthBar(currentHealthComponent.CurrentHP, currentHealthComponent.MaxHP);
+                healthText.text = $"{currentHealthComponent.CurrentHP}/{currentHealthComponent.MaxHP}";
+                currentHealthComponent.OnDeath += Hide;
+                currentHealthComponent.OnHealthChanged += UpdateHealBar;
+            }
             buildingNameText.text = data.BuildingName;
-            healthText.text = $"{hpComponent.CurrentHP}/{hpComponent.MaxHP}";
-            healthBar.fillAmount = hpComponent.HealthPercentage;
-
             switch (data.BuildingType)
             {
                 case BuildingType.House:
@@ -99,7 +111,7 @@ namespace UI.Buildings
         /// <summary>
         /// 更新魔法塔信息
         /// </summary>
-        private void UpdateTowerInfo(Data.Buildings.BuildingData data)
+        private void UpdateTowerInfo(BuildingData data)
         {
             /*bool isTower = data.IsTower;
 
@@ -121,28 +133,33 @@ namespace UI.Buildings
                 }
             }*/
         }
-        /// <summary>
-        /// 更新按钮状态
-        /// </summary>
+
         private void UpdateButtonStates()
         {
-            buildingLevelText.text = "等级: " + currentBuilding.LevelIndex+1;
+            buildingLevelText.text = "等级: " + (currentBuilding.LevelIndex+1);
             
-            // 升级按钮
-            if (upgradeButton != null)
+            if (currentBuilding.HasNextLevel)
             {
-                bool canUpgrade = currentBuilding.CanPerformUpgrade();
-                bool hasEnoughGold = ResourceManager.Instance.HasEnoughGold(currentBuilding.Data.LevelDatas[currentBuilding.LevelIndex]. UpgradeCost);
+                upgradeButton.gameObject.SetActive(true);
 
-                upgradeButton.interactable = canUpgrade && hasEnoughGold;
+                upgradeButton.interactable =
+                    currentBuilding.IsUpgradeable &&
+                    ResearchManager.Instance.IsBuildingUnlocked(currentBuilding.Data.BuildingType) &&
+                    ResourceManager.Instance.HasEnoughGold(currentBuilding.Data.LevelDatas[currentBuilding.LevelIndex].UpgradeCost);
+            }
+            else
+            {
+                upgradeButton.gameObject.SetActive(false);
             }
         }
+        
         /// <summary>
         /// 升级按钮回调
         /// </summary>
         private void OnUpgradeClicked()
         {
             BuildingManager.Instance.UpgradeBuilding(currentBuilding);
+            currentHealthComponent = null;
         }
         /// <summary>
         /// 拆除按钮回调
@@ -150,12 +167,9 @@ namespace UI.Buildings
         private void OnDemolishClicked()
         {
             BuildingManager.Instance.DemolishBuilding(currentBuilding);
-            ClosePanel();
+            Hide();
         }
-        private void SetPanelVisible(bool visible)
-        {
-            panelRoot.SetActive(visible);
-        }
+        
         private string GetResourceName(ResourceType resourceType)
         {
             return resourceType switch

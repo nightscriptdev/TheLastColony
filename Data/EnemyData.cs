@@ -1,5 +1,6 @@
 ﻿using Enums;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Data
 {
@@ -19,7 +20,7 @@ namespace Data
         
         [Tooltip("移动速度")]
         [Range(0.75f, 1.5f)]
-        public float moveSpeed = 1.0f;
+        public float baseSpeed = 1.0f;
         
         [Header("视觉")]
         [Tooltip("待机精灵图")]

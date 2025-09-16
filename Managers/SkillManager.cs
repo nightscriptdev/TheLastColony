@@ -82,7 +82,7 @@ namespace Managers
             }
         }
 
-        private void TrySelectSkill(SkillType skillType)
+        public void TrySelectSkill(SkillType skillType)
         {
             var skillData = GetSkillData(skillType);
             if (skillData == null)

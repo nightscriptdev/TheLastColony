@@ -26,10 +26,7 @@ public class HealthBarUI : MonoBehaviour
     private bool isShadowAnimating = false; // 残影是否正在动画
     private Coroutine shadowCoroutine;
 
-    private void Start()
-    {
-        mainFill.fillAmount = shadowFill.fillAmount = 0;
-    }
+    
 
     private void OnEnable()
     {
@@ -60,7 +57,19 @@ public class HealthBarUI : MonoBehaviour
         }
     }
     
-    private void HandleHealthChanged(int currentHP, int maxHP)
+    private void Start()
+    {
+        if (healthComponent != null)
+            InitializeHealthBar(healthComponent.CurrentHP, healthComponent.MaxHP);
+    }
+    
+    public void InitializeHealthBar(int currentHP, int maxHP)
+    {
+        mainFill.fillAmount = (float)currentHP / maxHP;
+        shadowFill.fillAmount = mainFill.fillAmount;
+    }
+
+    public void UpdateHealthBar(int currentHP, int maxHP)
     {
         float newFillAmount = (float)currentHP / maxHP;
         targetFillAmount = newFillAmount;
@@ -94,6 +103,11 @@ public class HealthBarUI : MonoBehaviour
             // 不启用残影效果时，两个血条同步更新
             shadowFill.fillAmount = newFillAmount;
         }
+    }
+    
+    private void HandleHealthChanged(int currentHP, int maxHP)
+    {
+        UpdateHealthBar(currentHP, maxHP);
         
         // 根据血量决定血条显示状态
         if (currentHP > 0 && currentHP < maxHP)
@@ -214,13 +228,4 @@ public class HealthBarUI : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// 设置残影效果参数
-    /// </summary>
-    public void SetShadowSettings(float delayTime, float speed, bool enable)
-    {
-        shadowDelayTime = delayTime;
-        shadowSpeed = speed;
-        enableShadowEffect = enable;
-    }
 }

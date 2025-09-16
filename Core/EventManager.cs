@@ -1,6 +1,7 @@
 using System;
 using Components.Buildings;
 using Components.Enemies;
+using Data;
 using Enums;
 using UI;
 using UnityEngine;
@@ -44,6 +45,8 @@ namespace Core
         public static Action<FloatingText> OnFloatingTextComplete;
 
         public static Action<EnemyComponent> OnEnemyDeath;
+        
+        public static Action<ResearchData> OnResearchComplete;
 
     
         /// <summary>

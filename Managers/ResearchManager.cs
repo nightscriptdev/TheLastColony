@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Core;
 using Data;
 using Enums;
@@ -12,6 +13,9 @@ namespace Managers
         public List<ResearchData> allResearches = new List<ResearchData>();
         
         private HashSet<ResearchData> completedResearches = new HashSet<ResearchData>();
+        
+        private HashSet<SkillType> unlockedSkills = new HashSet<SkillType>();
+        private HashSet<BuildingType> unlockedBuildings = new HashSet<BuildingType>();
         
         // 检查是否可以研究
         public bool CanResearch(ResearchData research)
@@ -42,9 +46,18 @@ namespace Managers
             
             // 标记为已完成
             completedResearches.Add(research);
-            
+
+            switch (research.type)
+            {
+                case ResearchType.Building:
+                    unlockedBuildings.Add(research.unlockBuildingType);
+                    break;
+                case ResearchType.Skill:
+                    unlockedSkills.Add(research.unlockSkill);
+                    break;
+            }
             // 触发研究完成事件
-            OnResearchCompleted(research);
+            EventManager.OnResearchComplete?.Invoke(research);
             
             return true;
         }
@@ -52,7 +65,17 @@ namespace Managers
         // 检查是否已研究
         public bool IsResearched(ResearchData research)
         {
-            return completedResearches.Contains(research);
+            switch (research.type)
+            {
+                case ResearchType.Building:
+                    return unlockedBuildings.Contains(research.unlockBuildingType);
+                    break;
+                case ResearchType.Skill:
+                    return unlockedSkills.Contains(research.unlockSkill);
+                    break;
+                default:
+                    return false;
+            }
         }
         
         // 检查建筑等级是否已解锁
@@ -84,12 +107,12 @@ namespace Managers
         
         public bool IsSkillUnlocked(SkillType skillType)
         {
-            foreach (var research in completedResearches)
-            {
-                if (research.unlockSkill == skillType)
-                    return true;
-            }
-            return false;
+            return unlockedSkills.Contains(skillType);
+        }
+        
+        public bool IsBuildingUnlocked(BuildingType buildingType)
+        {
+            return unlockedBuildings.Contains(buildingType);
         }
         
         // 检查是否有技能专精

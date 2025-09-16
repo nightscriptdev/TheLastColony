@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Core
@@ -37,7 +38,6 @@ namespace Core
     
         void OnEnable()
         {
-            initialKnowledge = 999999;
             // 订阅事件
             EventManager.OnDayStart += OnDayStart;
         }
@@ -47,7 +47,17 @@ namespace Core
             // 取消事件订阅
             EventManager.OnDayStart -= OnDayStart;
         }
-    
+
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.A))
+            {
+                AddFood(10);
+                AddGold(10);
+                AddKnowledge(10);
+            }
+        }
+
         /// <summary>
         /// 初始化资源到开局状态
         /// </summary>

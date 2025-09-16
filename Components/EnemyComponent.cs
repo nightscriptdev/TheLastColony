@@ -9,6 +9,8 @@ using Data;
 using Managers;
 using UnityEngine;
 using Enums;
+using Game;
+
 namespace Components.Enemies
 {
     /// <summary>
@@ -17,7 +19,7 @@ namespace Components.Enemies
     public class EnemyComponent : MonoBehaviour
     {
         [Header("组件引用")]
-        [SerializeField] private SpriteRenderer spriteRenderer;
+        public SpriteRenderer spriteRenderer;
         [SerializeField] private Animator animator;
         
         // REFACTOR: 将硬编码的数值暴露在Inspector中，方便调试和策划调整
@@ -36,11 +38,16 @@ namespace Components.Enemies
         [Header("运行时数据")]
         private EnemyData enemyData;
         private HealthComponent healthComponent;
+        private float currentSpeed;
+        private Dictionary<Type, StatusEffect> statusEffects = new Dictionary<Type, StatusEffect>();
+        
         private BuildingComponent currentTarget;
         private List<Vector3> currentPath;
         private int currentPathIndex;
         private static readonly int FlashAmountID = Shader.PropertyToID("_FlashAmount");
         private static readonly int FlashColorID = Shader.PropertyToID("_FlashColor");
+        
+        
         
         private enum EnemyState
         {
@@ -51,7 +58,6 @@ namespace Components.Enemies
         }
         private EnemyState currentState = EnemyState.Idle;
         
-        private float currentSpeed;
         private float slowTimer = 0f;
         
         private float attackCooldown = 0f;
@@ -95,13 +101,16 @@ namespace Components.Enemies
             int hp = enemyData.GetHPForDay(currentDay);
             healthComponent.SetMaxHP(hp, true);
             
-            currentSpeed = enemyData.moveSpeed;
+            currentSpeed = enemyData.baseSpeed;
             
             attackCooldown = 0f;
             isAttacking = false;
             slowTimer = 0f;
             currentPath = null;
             currentTarget = null;
+            
+            statusEffects.Clear();
+            RecalculateStats();
             
             StopAllCoroutines();
             StartCoroutine(AILoop());
@@ -151,7 +160,7 @@ namespace Components.Enemies
         {
             if (currentState == EnemyState.Dead) return;
             
-            UpdateSlowEffect();
+            UpdateStatusEffects(Time.deltaTime);
             
             if (attackCooldown > 0)
             {
@@ -170,18 +179,89 @@ namespace Components.Enemies
             
             UpdateAnimation();
         }
-        private void UpdateSlowEffect()
+        
+        public void ApplyStatusEffect(StatusEffect newEffect)
         {
-            if (slowTimer > 0)
+            Type effectType = newEffect.GetType();
+
+            if (statusEffects.TryGetValue(effectType, out StatusEffect existingEffect))
             {
-                slowTimer -= Time.deltaTime;
-                if (slowTimer <= 0)
+                // 效果已存在，刷新持续时间
+                // 也可以根据游戏设计决定是取效果强的，还是叠加等
+                existingEffect.remainingTime = newEffect.duration;
+            
+                // 如果新效果的参数不同（例如减速倍率），则替换掉旧的
+                if (newEffect is SlowEffect newSlow && existingEffect is SlowEffect oldSlow)
                 {
-                    currentSpeed = enemyData.moveSpeed;
+                    if (newSlow.slowMultiplier < oldSlow.slowMultiplier) // 假设乘数越小效果越强
+                    {
+                        statusEffects[effectType] = newEffect;
+                    }
+                }
+            }
+            else
+            {
+                // 效果不存在，添加并应用
+                statusEffects.Add(effectType, newEffect);
+                newEffect.Apply(this);
+            }
+        }
+        
+        private void UpdateStatusEffects(float deltaTime)
+        {
+            if (statusEffects.Count == 0) return;
+
+            // 不能在遍历字典时修改它，所以先收集要移除的Key
+            List<Type> effectsToRemove = new List<Type>();
+            foreach (var kvp in statusEffects)
+            {
+                kvp.Value.Update(deltaTime);
+                if (kvp.Value.remainingTime <= 0)
+                {
+                    effectsToRemove.Add(kvp.Key);
+                }
+            }
+        
+            // 统一移除过期的效果
+            foreach (var type in effectsToRemove)
+            {
+                if (statusEffects.TryGetValue(type, out StatusEffect effect))
+                {
+                    effect.Remove(this); // 调用Remove来触发重算
+                    statusEffects.Remove(type);
                 }
             }
         }
         
+        public void RecalculateStats()
+        {
+            // --- 数值计算 ---
+            currentSpeed = enemyData.baseSpeed;
+
+            // --- 视觉效果重置 ---
+            bool isSlowed = false;
+        
+            // 遍历所有当前激活的效果
+            foreach (var effect in statusEffects.Values)
+            {
+                if (effect is SlowEffect slow)
+                {
+                    currentSpeed *= slow.slowMultiplier;
+                    isSlowed = true;
+                }
+                // else if (effect is SpeedUpEffect haste) { ... }
+                // ... 可以扩展其他效果 ...
+            }
+
+            // --- 应用视觉效果 ---
+            // 这样可以正确处理多个减速效果：只要身上有任何一个减速，就变蓝
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.color = isSlowed ? new Color(0.2f, 0.2f, 1f) : Color.white;
+                //spriteRenderer.color = new Color(0.3f, 0.8f, 1f);
+            }
+        }
+
         private void UpdateTarget()
         {
             if (currentTarget == null || !currentTarget.gameObject.activeSelf)
@@ -266,7 +346,7 @@ namespace Components.Enemies
         {
             if (currentPath == null || currentPathIndex >= currentPath.Count || currentTarget==null) return;
             Vector3 targetPos;
-            if (Vector2.Distance(transform.position, currentTarget.transform.position) <= Single.MaxValue)
+            if (Vector2.Distance(transform.position, currentTarget.transform.position) <= toleranceRange)
             {
                 targetPos = currentTarget.transform.position;
             }
@@ -381,7 +461,7 @@ namespace Components.Enemies
         public void ApplySlow(float duration = 2f, float slowAmount = 0.5f)
         {
             slowTimer = duration;
-            currentSpeed = enemyData.moveSpeed * (1f - slowAmount);
+            currentSpeed = enemyData.baseSpeed * (1f - slowAmount);
         }
         
         private void OnTakeDamage(int damage)

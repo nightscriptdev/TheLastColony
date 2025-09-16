@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Text;
+using UnityEngine;
 using Enums;
 
 namespace Data
@@ -16,7 +17,6 @@ namespace Data
         public int baseDamage;              // 基础伤害
         public int knowledgeCost;           // 学识消耗
         public float cooldownTime;          // 冷却时间
-        public float castRange;             // 施放范围（多大范围内可以点击释放）
         public float effectRadius;          // 技能效果半径
         public float duration;              // 持续时间（对虚空漩涡有效）
         
@@ -29,5 +29,35 @@ namespace Data
         
         public bool IsInstantDamage => skillType != SkillType.VoidVortex;
         public bool IsAOE => skillType != SkillType.Lightning;
+
+        public string GetTooltip()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine($"<b>{skillName}</b>");
+    
+            if (!string.IsNullOrEmpty(description))
+                sb.AppendLine(description);
+
+            sb.AppendLine();
+
+            sb.AppendLine($"消耗学识: {knowledgeCost}");
+
+            sb.AppendLine($"冷却时间: {cooldownTime:0.0} 秒");
+
+            if (IsInstantDamage)
+                sb.AppendLine($"伤害: {baseDamage}");
+
+            if (IsAOE)
+                sb.AppendLine($"范围: {effectRadius:0.0}");
+
+            if (skillType == SkillType.VoidVortex)
+                sb.AppendLine($"持续时间: {duration:0.0} 秒");
+
+            sb.AppendLine($"快捷键: {hotkey}");
+
+            return sb.ToString();
+        }
+
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Core;
 using Data;
 using Managers;
 using UnityEngine;
@@ -17,11 +18,11 @@ namespace UI
     
         void Start()
         {
-            openButton.onClick.AddListener(()=> researchPanel.SetActive(true));
-            closeButton.onClick.AddListener(()=> researchPanel.SetActive(false));
+            openButton.onClick.AddListener(OpenPanel);
+            closeButton.onClick.AddListener(ClosePanel);
         
             SetupItems();
-            researchPanel.SetActive(false);
+            ClosePanel();
         }
     
         void SetupItems()
@@ -32,17 +33,26 @@ namespace UI
             }
         }
     
-        public void OpenResearchPanel()
+        public void OpenPanel()
         {
+            EventManager.OnKnowledgeChanged += RefreshResearchButtons;
+            
             researchPanel.SetActive(true);
-            RefreshResearchButtons();
+            RefreshResearchButtons(ResourceManager.Instance.Knowledge);
+        }
+
+        public void ClosePanel()
+        {
+            EventManager.OnKnowledgeChanged -= RefreshResearchButtons;
+            
+            researchPanel.SetActive(false);
         }
     
-        void RefreshResearchButtons()
+        void RefreshResearchButtons(int nowKnowledge)
         {
             foreach (var button in researchButtons)
             {
-                button.RefreshState();
+                button.RefreshState(nowKnowledge);
             }
         }
     
@@ -50,7 +60,7 @@ namespace UI
         {
             if (ResearchManager.Instance.DoResearch(research))
             {
-                RefreshResearchButtons();
+                RefreshResearchButtons(ResourceManager.Instance.Knowledge);
             }
         }
     }

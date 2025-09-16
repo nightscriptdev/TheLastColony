@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using Components.Enemies;
 using Data.Buildings;
 using Core;
-using Core.Grid;
 
 namespace Components.Buildings
 {
@@ -30,16 +29,6 @@ namespace Components.Buildings
         public int LevelIndex = 0;
 
         public Dictionary<Vector2Int, EnemyComponent> attackSlots;
-        /*public class AttackSlot
-        {
-            public Vector2Int gridPos;
-            public EnemyComponent Occupant; // 正在使用的敌人（null = 空闲）
-
-            public AttackSlot(Vector2Int gridPos)
-            {
-                this.gridPos = gridPos;
-            }
-        }*/
         
         // 组件引用
         private HealthComponent _healthComponent;
@@ -47,7 +36,8 @@ namespace Components.Buildings
         // 属性
         public BuildingData Data => buildingData;
         public bool IsBuilt => isBuilt;
-        public bool CanUpgrade => isBuilt && buildingData.CanUpgradeTo(LevelIndex + 1);
+        public bool HasNextLevel => (LevelIndex + 1) < Data.LevelDatas.Length;
+        public bool IsUpgradeable => isBuilt && _healthComponent.IsFullHealth;
         
         // Shader 属性的 ID，比使用字符串更高效
         private static readonly int FlashAmountID = Shader.PropertyToID("_FlashAmount");
@@ -113,22 +103,23 @@ namespace Components.Buildings
 
             while (_healthComponent.CurrentHP < _healthComponent.MaxHP)
             {
-                // 累积血量增长
-                accumulatedHp += buildingData.HpIncreaseRate * Time.deltaTime;
+                // 仅在白天建造或维修
+                if (TimeManager.Instance.IsDay)
+                {
+                    // 累积血量增长
+                    accumulatedHp += buildingData.HpIncreaseRate * Time.deltaTime;
             
-                // 当累积值大于等于1时，增加血量
-                if (accumulatedHp >= 1f)
-                {
-                    int hpToAdd = Mathf.FloorToInt(accumulatedHp);
-                    _healthComponent.SetCurrentHP(_healthComponent.CurrentHP + hpToAdd);
-                    accumulatedHp -= hpToAdd; // 减去已经添加的部分
+                    // 当累积值大于等于1时，增加血量
+                    if (accumulatedHp >= 1f)
+                    {
+                        int hpToAdd = Mathf.FloorToInt(accumulatedHp);
+                        _healthComponent.SetCurrentHP(_healthComponent.CurrentHP + hpToAdd);
+                        accumulatedHp -= hpToAdd; // 减去已经添加的部分
+                    }
                 }
-                else
-                {
-                    // 等到白天再继续
-                    yield return new WaitUntil(() => TimeManager.Instance.IsDay);
-                }
+                yield return null; // 每帧检查一次
             }
+            
             if (!isBuilt)
                 CompleteBuilding();
         }
@@ -148,30 +139,37 @@ namespace Components.Buildings
             }
 
             OnBuildingCompleted?.Invoke(this);
-            Debug.Log($"{buildingData.BuildingName} 建造完成！");
+            Debug.Log($"{buildingData.BuildingName} 建造/升级完成！");
         }
+        
         /// <summary>
         /// 升级建筑
         /// </summary>
         public virtual void UpgradeBuilding()
         {
-            if (!CanUpgrade) return;
-            //var newData = BuildingManager.Instance.GetBuildingData(buildingData.upgradeToType);
-            //if (newData == null) return;
+            // 1. 标记为“未建成”状态，以暂停其功能并触发OnBuildingDestroyed事件
             isBuilt = false;
+            OnBuildingDestroyed?.Invoke(this); // 移除旧等级的加成（如人口）
 
-            // 更新数据
-            //buildingData = newData;
-            //_healthComponent.SetMaxHP(newData.maxHP);
+            // 2. 提升等级并获取新等级的数据
+            LevelIndex++;
+            var newLevelData = buildingData.LevelDatas[LevelIndex];
 
-            //spriteRenderer.sprite = newData.icon;
+            // 3. 更新视觉和核心属性
+            spriteRenderer.sprite = newLevelData.sprite;
 
-            // 开始升级过程
+            // 设置新的最大生命值，同时保留当前生命值
+            _healthComponent.SetMaxHP(newLevelData.MaxHP);
+
+            // 4. 开始建造/恢复流程，以达到新的最大生命值
+            // 这个协程会自动处理白天建造、夜晚暂停，并在完成后调用CompleteBuilding
             StartCoroutine(BuildingAndHealProcess());
         }
+
         public virtual void DemolishBuilding()
         {
-            OnBuildingDeath();
+            // 直接触发死亡逻辑
+            _healthComponent.Kill();
         }
 
         /// <summary>
@@ -182,13 +180,12 @@ namespace Components.Buildings
             if (isBuilt)
             {
                 OnBuildingDestroyed?.Invoke(this);
-
-                if (destructionEffect != null)
-                {
-                    Destroy(Instantiate(destructionEffect, transform.position, Quaternion.identity), 0.667f); 
-                }
             }
 
+            if (destructionEffect != null)
+            {
+                Destroy(Instantiate(destructionEffect, transform.position, Quaternion.identity), 0.667f); 
+            }
             Destroy(gameObject);
         }
         /// <summary>
@@ -219,28 +216,29 @@ namespace Components.Buildings
         /// </summary>
         public virtual string GetInfoText()
         {
-            string info = $"{buildingData.BuildingName}\n";
-            info += $"HP: {_healthComponent.CurrentHP}/{_healthComponent.MaxHP}\n";
+            string info = $"<b>{buildingData.BuildingName} (等级 {LevelIndex + 1})</b>\n";
+            info += $"生命值: {_healthComponent.CurrentHP}/{_healthComponent.MaxHP}\n";
             var levelData = buildingData.LevelDatas[LevelIndex];
 
             if (buildingData.IsHousing)
-                info += $"人口上限: +{levelData.PopulationCapacity}\n";
+                info += $"提供人口: +{levelData.PopulationCapacity}\n";
 
             if (buildingData.IsProduction)
-                info += $"生产: {levelData.BaseProduction} {buildingData.ResourceType}\n";
+                info += $"产出: {levelData.BaseProduction} {buildingData.ResourceType}\n";
+            
+            if (buildingData.IsTower)
+            {
+                info += $"伤害: {levelData.MinDamage}-{levelData.MaxDamage}\n";
+                info += $"攻速: {levelData.AttackInterval} 秒/次\n";
+                info += $"射程: {levelData.AttackRange} 格\n";
+            }
 
-            if (CanUpgrade)
-                info += $"升级花费: {levelData.UpgradeCost}金币";
+            if (HasNextLevel)
+                info += $"\n<b>升级需要: {buildingData.LevelDatas[LevelIndex].UpgradeCost} 金币</b>";
+            else if (isBuilt)
+                info += "\n<b>已达到最高等级</b>";
 
             return info;
-        }
-
-        /// <summary>
-        /// 检查是否可以升级（满血且有升级路径）
-        /// </summary>
-        public bool CanPerformUpgrade()
-        {
-            return CanUpgrade && _healthComponent.IsFullHealth;
         }
 
         private void OnTakeDamage(int amount)
@@ -260,12 +258,11 @@ namespace Components.Buildings
             spriteRenderer.material.SetFloat(FlashAmountID, 0f);
         }
         
-        // <summary>
-        /// 获取当前可用槽位数量
-        /// </summary>
+        // ... (rest of the class remains the same) ...
         public int GetAvailableSlotCount()
         {
             int count = 0;
+            if (attackSlots == null) return 0;
             foreach (var slot in attackSlots)
             {
                 if (slot.Value == null)
@@ -273,13 +270,10 @@ namespace Components.Buildings
             }
             return count;
         }
-
-        /// <summary>
-        /// 打印当前槽位占用情况（用于调试）
-        /// </summary>
         public void DebugSlotStatus()
         {
             Debug.Log($"建筑 {name} 槽位状态：");
+            if (attackSlots == null) return;
             foreach (var slot in attackSlots)
             {
                 string enemyName = slot.Value != null ? slot.Value.name : "空闲";
@@ -287,9 +281,7 @@ namespace Components.Buildings
             }
             Debug.Log($"  总槽位: {attackSlots.Count}, 可用槽位: {GetAvailableSlotCount()}");
         }
-
-        // 在BuildingComponent的Gizmos绘制中添加槽位可视化
-        private void OnDrawGizmos()
+        /*private void OnDrawGizmos()
         {
             if (attackSlots == null || attackSlots.Count == 0) return;
     
@@ -299,17 +291,14 @@ namespace Components.Buildings
         
                 if (slot.Value == null)
                 {
-                    // 空闲槽位用绿色显示
                     Gizmos.color = Color.green;
                     Gizmos.DrawWireCube(slotWorldPos, Vector3.one * 0.8f);
                 }
                 else
                 {
-                    // 被占用的槽位用红色显示
                     Gizmos.color = Color.red;
                     Gizmos.DrawCube(slotWorldPos, Vector3.one * 0.6f);
             
-                    // 绘制到占用敌人的连线
                     if (slot.Value != null)
                     {
                         Gizmos.color = Color.yellow;
@@ -317,10 +306,9 @@ namespace Components.Buildings
                     }
                 }
         
-                // 绘制从建筑到槽位的连线
                 Gizmos.color = Color.white;
                 Gizmos.DrawLine(transform.position, slotWorldPos);
             }
-        }
+        }*/
     }
 }

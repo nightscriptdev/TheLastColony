@@ -235,18 +235,20 @@ namespace Managers
         /// </summary>
         public bool UpgradeBuilding(BuildingComponent building)
         {
-            if (!building.CanPerformUpgrade())
-                return false;
-
-            /*var upgradeData = GetBuildingData(building.Data.upgradeToType);
-            if (upgradeData == null)
-                return false;
-
-            if (!ResourceManager.Instance.SpendGold(building.Data.upgradeCost))
+            if (!building.HasNextLevel || !building.IsUpgradeable)
             {
-                Debug.Log("金币不足，无法升级！");
+                Debug.Log("无法升级：建筑未满血或已是最高等级。");
                 return false;
-            }*/
+            }
+
+            // 从建筑当前等级的数据中获取升级到下一级所需的费用
+            int upgradeCost = building.Data.LevelDatas[building.LevelIndex].UpgradeCost;
+
+            if (!ResourceManager.Instance.SpendGold(upgradeCost))
+            {
+                Debug.Log("金币不足，无法升级。");
+                return false;
+            }
 
             building.UpgradeBuilding();
             return true;

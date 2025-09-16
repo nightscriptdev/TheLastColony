@@ -19,7 +19,7 @@ namespace UI
     
         public ResearchData research;
         private ResearchUI researchUI;
-    
+
         public void Setup(ResearchUI ui)
         {
             researchUI = ui;
@@ -31,29 +31,28 @@ namespace UI
         
             button.onClick.AddListener(() => researchUI.OnResearchButtonClicked(research));
         
-            RefreshState();
         }
     
-        public void RefreshState()
+        public void RefreshState(int nowKnowledge)
         {
-            bool isResearched = ResearchManager.Instance.IsResearched(research);
-            
-            // 按钮交互性
-            button.interactable = ResearchManager.Instance.CanResearch(research);
-
-            if (isResearched)
+            if (ResearchManager.Instance.IsResearched(research))
             {
                 completedImage.enabled = true;
                 if(button)
                     Destroy(button.gameObject);
                 costText.text = "已研究";
             }
-            else if (ResourceManager.Instance.Knowledge >= research.knowledgeCost)
-                costText.color = Color.white;
             else
-                costText.color = Color.red;
+            {
+                button.interactable = ResearchManager.Instance.CanResearch(research);
+                
+                if (nowKnowledge >= research.knowledgeCost)
+                    costText.color = Color.white;
+                else
+                    costText.color = Color.red;    
+            }
         }
-        
+
         public override string GetTooltip()
         {
             string tooltip = String.Empty;

@@ -1,5 +1,6 @@
 using Core;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace UI
 {
@@ -9,15 +10,21 @@ namespace UI
     /// </summary>
     public class GameUI : MonoBehaviour
     {
-        [Header("UI面板引用")]
         [SerializeField] private GameObject gameplayUI;    // 游戏进行时的UI
         [SerializeField] private GameObject pauseMenuUI;   // 暂停菜单
         [SerializeField] private GameObject gameOverUI;    // 游戏结束UI
+        [SerializeField] private GameObject buildingConstructionUI;
+        [SerializeField] private GameObject skillUI;
 
-        [Header("UI组件引用")]
         [SerializeField] private ResourceUI resourceUI;
         [SerializeField] private DayNightCycleUI dayNightUI;
-
+        
+        
+        [SerializeField] private Button btnShowBuildingConstructionUI;
+        [SerializeField] private Button btnShowSkillUI;
+        
+        [SerializeField] private Color activeTabColor = Color.green;
+        [SerializeField] private Color inactiveTabColor = Color.white;
         private void OnEnable()
         {
             // 订阅游戏状态变化事件
@@ -36,6 +43,29 @@ namespace UI
             EventManager.OnGameResume -= OnGameResume;
         }
 
+        private void Start()
+        {
+            btnShowBuildingConstructionUI.onClick.AddListener(SwitchToBuildingConstructionUI);
+            btnShowSkillUI.onClick.AddListener(SwitchToSkillUI);
+            SwitchToBuildingConstructionUI();
+        }
+
+        private void SwitchToBuildingConstructionUI()
+        {
+            skillUI.SetActive(false);
+            buildingConstructionUI.SetActive(true);
+            btnShowBuildingConstructionUI.GetComponent<Image>().color = activeTabColor;
+            btnShowSkillUI.GetComponent<Image>().color = inactiveTabColor;
+        }
+
+        private void SwitchToSkillUI()
+        {
+            buildingConstructionUI.SetActive(false);
+            skillUI.SetActive(true);
+            btnShowSkillUI.GetComponent<Image>().color = activeTabColor;
+            btnShowBuildingConstructionUI.GetComponent<Image>().color = inactiveTabColor;
+        }
+        
         /// <summary>
         /// 游戏开始时的UI处理
         /// </summary>

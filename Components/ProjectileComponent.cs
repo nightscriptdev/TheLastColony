@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using Components.Enemies;
+using Game;
+using UnityEngine;
 
 namespace Components
 {
@@ -24,18 +26,19 @@ namespace Components
             // 自动销毁
             Destroy(gameObject, lifetime);
         }
-        public void Initialize(Transform target, int damage, bool hasSlowEffect = false, int pierceCount = 1)
+        /*public void Initialize(Transform target, int damage, bool hasSlowEffect = false, int pierceCount = 1)
         {
             this.target = target;
             this.damage = damage;
             this.hasSlowEffect = hasSlowEffect;
             this.pierceCount = pierceCount;
             useDirection = false;
-        }
-        public void InitializeWithDirection(int damage, bool hasSlowEffect = false, int pierceCount = 1)
+        }*/
+        public void Initialize(int damage, bool hasSlowEffect = false, int pierceCount = 1)
         {
             this.damage = damage;
             this.hasSlowEffect = hasSlowEffect;
+            this.pierceCount = pierceCount;
             useDirection = true;
         }
         private void Update()
@@ -64,13 +67,24 @@ namespace Components
         }
         private void MoveInDirection()
         {
-            transform.position += transform.up * speed * Time.deltaTime;
+            transform.position += transform.right * speed * Time.deltaTime;
         }
         private void OnTriggerEnter2D(Collider2D other)
         {
             /// 工程中设置只和敌人交互
-            DamageEnemy(other.GetComponent<HealthComponent>());
+            other.GetComponent<HealthComponent>().TakeDamage(damage);
 
+            if (hasSlowEffect)
+            {
+                other.GetComponent<EnemyComponent>().ApplyStatusEffect(new SlowEffect(3.0f, 0.5f));
+            }
+            
+            if (impactEffect != null)
+            {
+                var obj = Instantiate(impactEffect, other.ClosestPoint(transform.position), Quaternion.identity);
+                Destroy(obj, 0.208f); 
+            }
+            
             currentPierces++;
 
             // 如果不是穿透攻击或者已达到穿透上限，销毁子弹
@@ -79,24 +93,9 @@ namespace Components
                 DestroyProjectile();
             }
         }
-        private void DamageEnemy(HealthComponent healthComponent)
-        {
-            //FloatingTextManager.Instance.ShowDamage(damage, enemy.position, false);
-            healthComponent.TakeDamage(damage); 
-            Debug.Log($"子弹对 {healthComponent.name} 造成 {damage} 点伤害");
-            if (hasSlowEffect)
-            {
-                // TODO: 给敌人添加减速效果
-                Debug.Log($"敌人 {healthComponent.name} 被减速");
-            }
-        }
         private void DestroyProjectile()
         {
-            // 播放撞击特效
-            if (impactEffect != null)
-            {
-                Instantiate(impactEffect, transform.position, Quaternion.identity);
-            }
+            
             Destroy(gameObject);
         }
     }

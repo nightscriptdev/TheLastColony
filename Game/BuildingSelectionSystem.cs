@@ -124,7 +124,7 @@ namespace Game
             if (buildingInfoPanel != null)
             {
                 PositionBuildingInfoPanel(building.transform.position);
-                buildingInfoPanel.ShowBuildingInfo(building);
+                buildingInfoPanel.Show(building);
             }
             
             Debug.Log($"选择建筑: {building.Data.BuildingName}");
@@ -147,7 +147,7 @@ namespace Game
             // 隐藏建筑信息面板
             if (buildingInfoPanel != null)
             {
-                buildingInfoPanel.ClosePanel();
+                buildingInfoPanel.Hide();
             }
         }
 
@@ -168,15 +168,9 @@ namespace Game
             {
                 if (selected)
                 {
-                    // 保存原始颜色
-                    originalColor = selectedBuildingRenderer.color;
-                    // 设置选中颜色
-                    selectedBuildingRenderer.color = selectedColor;
                 }
                 else
                 {
-                    // 恢复原始颜色
-                    selectedBuildingRenderer.color = originalColor;
                 }
             }
 

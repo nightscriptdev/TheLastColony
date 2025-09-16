@@ -1,82 +1,43 @@
-﻿using Core;
+﻿using System;
+using Core;
+using Data;
 using Enums;
 using Managers;
 using TMPro;
+using UI.Tooltip;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace UI
 {
-    public class SkillButton : MonoBehaviour
+    public class SkillButton : TooltipTrigger, IPointerClickHandler
     {
-        [Header("按钮组件")]
-        [SerializeField] private Button button;
         [SerializeField] private Image iconImage;
         [SerializeField] private Image cooldownOverlay;
         [SerializeField] private TextMeshProUGUI cooldownText;
-        [SerializeField] private TextMeshProUGUI hotkeyText;
-        [SerializeField] private GameObject lockedOverlay;
         
-        private SkillType skillType;
-        private System.Action<SkillType> onClickCallback;
-        
-        public void Initialize(SkillType type, string hotkey, System.Action<SkillType> callback)
-        {
-            skillType = type;
-            onClickCallback = callback;
-            
-            // 设置快捷键文本
-            if (hotkeyText != null)
-                hotkeyText.text = hotkey;
-            
-            // 设置按钮点击事件
-            if (button != null)
-                button.onClick.AddListener(() => onClickCallback?.Invoke(skillType));
-            
-            // 初始化冷却遮罩
-            if (cooldownOverlay != null)
-            {
-                cooldownOverlay.fillMethod = Image.FillMethod.Radial360;
-                cooldownOverlay.fillOrigin = (int)Image.Origin360.Top;
-            }
-        }
+        [SerializeField] private SkillData skillData;
 
-        public void UpdateButton()
+        public void Update()
         {
-            // 检查技能是否解锁
-            bool isUnlocked = ResearchManager.Instance.IsSkillUnlocked(skillType);
-            
-            // 更新锁定状态
-            if (lockedOverlay != null)
-                lockedOverlay.SetActive(!isUnlocked);
-            
-            if (!isUnlocked)
+            if (ResearchManager.Instance.IsSkillUnlocked(skillData.skillType))
             {
-                // 技能未解锁，禁用按钮
-                if (button != null)
-                    button.interactable = false;
-                return;
+                bool isOnCooldown = SkillManager.Instance.IsSkillOnCooldown(skillData.skillType);
+                bool hasEnoughKnowledge = HasEnoughKnowledge();
+                bool canUse = !isOnCooldown && hasEnoughKnowledge;
+            
+                // 更新冷却显示
+                UpdateCooldownDisplay();
+            
+                // 更新按钮颜色（可选）
+                UpdateButtonColor(canUse, hasEnoughKnowledge);
             }
-
-            // 技能已解锁，检查其他状态
-            bool isOnCooldown = SkillManager.Instance .IsSkillOnCooldown(skillType);
-            bool hasEnoughKnowledge = HasEnoughKnowledge();
-            bool canUse = !isOnCooldown && hasEnoughKnowledge;
-            
-            // 更新按钮可交互状态
-            if (button != null)
-                button.interactable = canUse;
-            
-            // 更新冷却显示
-            UpdateCooldownDisplay();
-            
-            // 更新按钮颜色（可选）
-            UpdateButtonColor(canUse, hasEnoughKnowledge);
         }
 
         private void UpdateCooldownDisplay()
         {
-            float remainingCooldown = SkillManager.Instance.GetSkillCooldown(skillType);
+            float remainingCooldown = SkillManager.Instance.GetSkillCooldown(skillData.skillType);
             bool isOnCooldown = remainingCooldown > 0;
             
             if (cooldownOverlay != null)
@@ -85,7 +46,7 @@ namespace UI
                 
                 if (isOnCooldown)
                 {
-                    float maxCooldown =  SkillManager.Instance.GetSkillData(skillType).cooldownTime;
+                    float maxCooldown =  SkillManager.Instance.GetSkillData(skillData.skillType).cooldownTime;
                     if (maxCooldown > 0)
                     {
                         cooldownOverlay.fillAmount = remainingCooldown / maxCooldown;
@@ -109,20 +70,16 @@ namespace UI
 
         private void UpdateButtonColor(bool canUse, bool hasEnoughKnowledge)
         {
-            if (iconImage == null) return;
-
             Color targetColor = Color.white;
             
             if (!canUse)
             {
                 if (!hasEnoughKnowledge)
                 {
-                    // 学识不足 - 红色调
                     targetColor = new Color(1f, 0.5f, 0.5f, 1f);
                 }
                 else
                 {
-                    // 冷却中 - 灰色调
                     targetColor = new Color(0.6f, 0.6f, 0.6f, 1f);
                 }
             }
@@ -132,13 +89,30 @@ namespace UI
 
         private bool HasEnoughKnowledge()
         {
-            if (ResearchManager.Instance.IsSkillUnlocked(skillType))
+            if (ResearchManager.Instance.IsSkillUnlocked(skillData.skillType))
             {
-                return ResourceManager.Instance.HasEnoughKnowledge(SkillManager.Instance.GetSkillData(skillType).knowledgeCost);
+                return ResourceManager.Instance.HasEnoughKnowledge(SkillManager.Instance.GetSkillData(skillData.skillType).knowledgeCost);
             }
             
             return false;
         }
         
+        public override string GetTooltip()
+        {
+            string tooltip = String.Empty;
+
+            if (ResearchManager.Instance.IsSkillUnlocked(skillData.skillType))
+                tooltip += skillData.GetTooltip();
+            else
+                tooltip += $"<color=red>需要研究[{skillData.skillName}]</color>";
+            
+            return tooltip;
+        }
+
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            SkillManager.Instance.TrySelectSkill(skillData.skillType);
+        }
     }
 }
