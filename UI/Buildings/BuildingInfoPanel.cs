@@ -1,12 +1,16 @@
-﻿using Components;
+﻿using System;
+using Components;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Components.Buildings;
 using Core;
+using Data;
 using Data.Buildings;
 using Enums;
 using Managers;
+using UI.Tooltip;
+
 namespace UI.Buildings
 {
     /// <summary>
@@ -24,9 +28,11 @@ namespace UI.Buildings
         [Header("操作按钮")]
         [SerializeField] private TextMeshProUGUI buildingLevelText;
         [SerializeField] private Button upgradeButton;
+        [SerializeField] private TooltipTrigger upgradeTooltipTrigger;
         [SerializeField] private Button demolishButton;
         private BuildingComponent currentBuilding;
         private HealthComponent currentHealthComponent;
+        
         //private TowerComponent currentTower;
         
         private void Start()
@@ -39,22 +45,36 @@ namespace UI.Buildings
             
             Hide();
         }
-        
+
         private void Update()
         {
-            if (currentBuilding != null && panelRoot.activeSelf)
-            {
-                UpdateBuildingInfo();
-            }
+            UpdateBuildingInfo();
         }
-        
+
         public void Show(BuildingComponent building)
         {
+            EventManager.OnGoldChanged += OnGoldChanged;
+            EventManager.OnResearchComplete += OnResearchComplete;
+            
+            
             currentBuilding = building;
+            currentHealthComponent = currentBuilding.GetComponent<HealthComponent>();
+            healthBar.InitializeHealthBar(currentHealthComponent.CurrentHP, currentHealthComponent.MaxHP);
+            healthText.text = $"{currentHealthComponent.CurrentHP}/{currentHealthComponent.MaxHP}";
+            currentHealthComponent.OnDeath += Hide;
+            currentHealthComponent.OnHealthChanged += UpdateHealBar;
+            buildingNameText.text = currentBuilding.Data.BuildingName;
+
+            UpdateBuildingInfo();
+            UpdateButtonStates();
             panelRoot.SetActive(true);
         }
         public void Hide()
         {
+            EventManager.OnGoldChanged -= OnGoldChanged;
+            EventManager.OnResearchComplete -= OnResearchComplete;
+
+            
             currentBuilding = null;
             if (currentHealthComponent)
             {
@@ -75,82 +95,53 @@ namespace UI.Buildings
 
         private void UpdateBuildingInfo()
         {
-            var data = currentBuilding.Data;
-            if (currentHealthComponent == null)
-            {
-                currentHealthComponent = currentBuilding.GetComponent<HealthComponent>();
-                healthBar.InitializeHealthBar(currentHealthComponent.CurrentHP, currentHealthComponent.MaxHP);
-                healthText.text = $"{currentHealthComponent.CurrentHP}/{currentHealthComponent.MaxHP}";
-                currentHealthComponent.OnDeath += Hide;
-                currentHealthComponent.OnHealthChanged += UpdateHealBar;
-            }
-            buildingNameText.text = data.BuildingName;
-            switch (data.BuildingType)
-            {
-                case BuildingType.House:
-                    buildingInfoText.text = $"+{data.LevelDatas[currentBuilding.LevelIndex].PopulationCapacity} 人口上限";
-                    break;
-                case BuildingType.Farm:
-                case BuildingType.Mine:
-                case BuildingType.ResearchLab:
-                    buildingInfoText.text = $"产出{GetResourceName(data.ResourceType)}\n产量: {ResourceManager.Instance.CalculateFinalProduction(data.LevelDatas[currentBuilding.LevelIndex].BaseProduction)} / {data.ProductionInterval:F0}秒";
-                    break;
-                case BuildingType.PurpleCrystalTower:
-                    break;
-                case BuildingType.BlueCrystalTower:
-                    break;
-                case BuildingType.WhiteCrystalTower:
-                    break;
-                case BuildingType.DefenseCrystal:
-                    break;
-            }
-            UpdateTowerInfo(data);
-            // 按钮状态
-            UpdateButtonStates();
-        }
-        /// <summary>
-        /// 更新魔法塔信息
-        /// </summary>
-        private void UpdateTowerInfo(BuildingData data)
-        {
-            /*bool isTower = data.IsTower;
-
-            if (towerInfoGroup != null)
-                towerInfoGroup.SetActive(isTower);
-            if (isTower)
-            {
-                if (damageText != null)
-                    damageText.text = $"伤害: {data.MinDamage}-{data.MaxDamage}";
-                if (attackRangeText != null)
-                    attackRangeText.text = $"射程: {data.AttackRange:F1}";
-                if (attackSpeedText != null)
-                    attackSpeedText.text = $"攻速: {data.AttackInterval:F1}秒";
-                if (specialEffectsText != null)
-                {
-                    string effects = GetTowerSpecialEffects(data);
-                    specialEffectsText.text = effects;
-                    specialEffectsText.gameObject.SetActive(!string.IsNullOrEmpty(effects));
-                }
-            }*/
+            buildingInfoText.text = currentBuilding.GetInfoText();
         }
 
         private void UpdateButtonStates()
         {
-            buildingLevelText.text = "等级: " + (currentBuilding.LevelIndex+1);
+            buildingLevelText.text = "等级\n" + (currentBuilding.Level);
             
             if (currentBuilding.HasNextLevel)
             {
                 upgradeButton.gameObject.SetActive(true);
 
-                upgradeButton.interactable =
-                    currentBuilding.IsUpgradeable &&
-                    ResearchManager.Instance.IsBuildingUnlocked(currentBuilding.Data.BuildingType) &&
-                    ResourceManager.Instance.HasEnoughGold(currentBuilding.Data.LevelDatas[currentBuilding.LevelIndex].UpgradeCost);
+                if (!ResearchManager.Instance.IsBuildingUnlocked(new BuildingKey(currentBuilding.Data.BuildingType, currentBuilding.Level+1)))
+                {
+                    upgradeTooltipTrigger.customTooltip = "<color=red>尚未研究</color>";
+                    upgradeButton.interactable = false;
+                    return;
+                }
+                if (!currentBuilding.IsUpgradeable)
+                {
+                    upgradeTooltipTrigger.customTooltip = "<color=red>需要满血</color>";
+                    upgradeButton.interactable = false;
+                    return;
+                }
+                if (ResourceManager.Instance.Gold < currentBuilding.LevelData.UpgradeCost)
+                {
+                    upgradeTooltipTrigger.customTooltip = "<color=red>金币不足</color>";
+                    upgradeButton.interactable = false;
+                    return;
+                }
+
+                upgradeTooltipTrigger.customTooltip = "";
+                upgradeButton.interactable = true;
             }
             else
             {
                 upgradeButton.gameObject.SetActive(false);
             }
+        }
+
+        void OnGoldChanged(int currentGold)
+        {
+            UpdateButtonStates();
+        }
+
+        void OnResearchComplete(ResearchData researchData)
+        {
+            UpdateButtonStates();
         }
         
         /// <summary>
@@ -159,6 +150,8 @@ namespace UI.Buildings
         private void OnUpgradeClicked()
         {
             BuildingManager.Instance.UpgradeBuilding(currentBuilding);
+            UpdateButtonStates();
+            upgradeTooltipTrigger.RefreshTooltip();
             currentHealthComponent = null;
         }
         /// <summary>
@@ -180,25 +173,6 @@ namespace UI.Buildings
                 _ => "未知"
             };
         }
-        /// <summary>
-        /// 获取魔法塔特殊效果描述
-        /// </summary>
-        private string GetTowerSpecialEffects(Data.Buildings.BuildingData data)
-        {
-            var effects = new System.Collections.Generic.List<string>();
-            /*if (data.HasSlowEffect)
-                effects.Add("减速");
-            if (data.PierceCount > 1)
-                effects.Add($"穿透{data.PierceCount}个敌人");
-            if (data.MultiShotCount > 1)
-                effects.Add($"发射{data.MultiShotCount}个子弹");
-            if (data.ConsecutiveAttacks > 1)
-                effects.Add($"连续攻击{data.ConsecutiveAttacks}次");
-            if (data.ReflectDamage)
-                effects.Add($"反射{data.ReflectPercent * 100}%伤害");*/
-            return effects.Count > 0 ? string.Join(", ", effects) : "";
-        }
-        
         /// <summary>
         /// 外部调用，用于处理建筑点击
         /// </summary>

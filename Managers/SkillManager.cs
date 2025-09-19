@@ -90,20 +90,17 @@ namespace Managers
 
             if (!ResearchManager.Instance.IsSkillUnlocked(skillType))
             {
-                Debug.Log($"技能 {skillData.skillName} 尚未解锁");
                 return;
             }
 
             if (IsSkillOnCooldown(skillType))
             {
-                Debug.Log($"技能 {skillData.skillName} 正在冷却中");
                 return;
             }
 
             int cost = skillData.knowledgeCost;
             if (!ResourceManager.Instance.HasEnoughKnowledge(cost))
             {
-                Debug.Log($"学识不足，需要 {cost} 学识");
                 return;
             }
 
@@ -112,7 +109,6 @@ namespace Managers
             
             Cursor.SetCursor(skillCursor, new Vector2(13, 13), CursorMode.Auto);
             
-            Debug.Log($"选择技能: {skillData.skillName}");
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-using System;
+using Components.Buildings;
 using UnityEngine;
 
 namespace Core
@@ -10,7 +10,7 @@ namespace Core
     public class ResourceManager : MonoSingleton<ResourceManager>
     {
         [Header("初始资源设置")]
-        [SerializeField] private int initialPopulation = 2;
+        [SerializeField] private int initialPopulation = 0;
         [SerializeField] private int initialFood = 20;
         [SerializeField] private int initialGold = 100;
         [SerializeField] private int initialKnowledge = 25;

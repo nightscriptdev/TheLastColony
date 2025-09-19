@@ -41,13 +41,17 @@ namespace Core
         // 建造
         public static Action<BuildingComponent> OnBuildingPlaced;
         public static Action<BuildingType> OnBuildingButtonClick;
-        
+
         public static Action<FloatingText> OnFloatingTextComplete;
 
         public static Action<EnemyComponent> OnEnemyDeath;
         
         public static Action<ResearchData> OnResearchComplete;
 
+        public static Action<Vector3> OnEnemyStayed;
+        public static Action<Vector3> OnGridRelease;
+
+        public static Action<Vector3> OnCellBecomeObstacle;
     
         /// <summary>
         /// 清除所有事件订阅，主要用于场景切换时防止空引用

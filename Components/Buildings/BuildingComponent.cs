@@ -1,10 +1,9 @@
 ﻿using System;
 using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
-using Components.Enemies;
 using Data.Buildings;
 using Core;
+using Interface;
 
 namespace Components.Buildings
 {
@@ -15,6 +14,7 @@ namespace Components.Buildings
     {
         [Header("建筑数据")]
         [SerializeField] private BuildingData buildingData;
+        [SerializeField] private AnimationClip animationClip;
         
         [Header("建造状态")]
         [SerializeField] private bool isBuilt = false;
@@ -25,24 +25,27 @@ namespace Components.Buildings
         [SerializeField] private float buildingAlpha = 0.5f;
         public Action<BuildingComponent> OnBuildingCompleted;
         public Action<BuildingComponent> OnBuildingDestroyed;
+        public Action OnBuildingUpgraded;
 
-        public int LevelIndex = 0;
+        public BuildingKey BuildingKey;
 
-        public Dictionary<Vector2Int, EnemyComponent> attackSlots;
+        public IInfoProvider InfoProvider;
         
         // 组件引用
         private HealthComponent _healthComponent;
         private HealthBarUI _healthBarUI;
         // 属性
         public BuildingData Data => buildingData;
+        public BuildingData.LevelData LevelData => buildingData.LevelDatas[Level-1];
         public bool IsBuilt => isBuilt;
-        public bool HasNextLevel => (LevelIndex + 1) < Data.LevelDatas.Length;
+        public bool HasNextLevel => Level < Data.LevelDatas.Length;
         public bool IsUpgradeable => isBuilt && _healthComponent.IsFullHealth;
         
         // Shader 属性的 ID，比使用字符串更高效
         private static readonly int FlashAmountID = Shader.PropertyToID("_FlashAmount");
         
         public Vector2Int GridPosition { get; private set; }
+        public int Level { get; private set; } = 1;
 
         protected virtual void Awake()
         {
@@ -50,6 +53,9 @@ namespace Components.Buildings
             _healthBarUI = GetComponent<HealthBarUI>();
             if (spriteRenderer == null)
                 spriteRenderer = GetComponent<SpriteRenderer>();
+            
+            BuildingKey = new BuildingKey(Data.BuildingType, Level);
+            InfoProvider = GetComponent<IInfoProvider>();
         }
         protected virtual void OnEnable()
         {
@@ -77,9 +83,18 @@ namespace Components.Buildings
             buildingData = data;
             GridPosition = gridPos;
 
-            _healthComponent.SetMaxHP(data.LevelDatas[LevelIndex].MaxHP);
+            _healthComponent.SetMaxHP(data.LevelDatas[Level-1].MaxHP);
             
             StartBuilding();
+        }
+        public virtual void InitializePrebuilt(Vector2Int gridPos)
+        {
+            GridPosition = gridPos;
+
+            _healthComponent.SetMaxHP(Data.LevelDatas[Level-1].MaxHP, true);
+            
+            isBuilt = true;
+            OnBuildingCompleted?.Invoke(this);
         }
         /// <summary>
         /// 开始建造过程
@@ -135,7 +150,7 @@ namespace Components.Buildings
             // 播放建造完成效果
             if (buildingCompleteEffect != null)
             {
-                Instantiate(buildingCompleteEffect, transform.position, Quaternion.identity);
+                Destroy(Instantiate(buildingCompleteEffect, transform.position, Quaternion.identity), 0.833f);
             }
 
             OnBuildingCompleted?.Invoke(this);
@@ -147,23 +162,18 @@ namespace Components.Buildings
         /// </summary>
         public virtual void UpgradeBuilding()
         {
-            // 1. 标记为“未建成”状态，以暂停其功能并触发OnBuildingDestroyed事件
-            isBuilt = false;
-            OnBuildingDestroyed?.Invoke(this); // 移除旧等级的加成（如人口）
-
             // 2. 提升等级并获取新等级的数据
-            LevelIndex++;
-            var newLevelData = buildingData.LevelDatas[LevelIndex];
+            var newLevelData = buildingData.LevelDatas[Level++];
 
             // 3. 更新视觉和核心属性
             spriteRenderer.sprite = newLevelData.sprite;
 
             // 设置新的最大生命值，同时保留当前生命值
-            _healthComponent.SetMaxHP(newLevelData.MaxHP);
+            _healthComponent.SetMaxHP(newLevelData.MaxHP, true);
 
-            // 4. 开始建造/恢复流程，以达到新的最大生命值
-            // 这个协程会自动处理白天建造、夜晚暂停，并在完成后调用CompleteBuilding
-            StartCoroutine(BuildingAndHealProcess());
+            CompleteBuilding();
+            OnBuildingUpgraded?.Invoke();
+            //StartCoroutine(BuildingAndHealProcess());
         }
 
         public virtual void DemolishBuilding()
@@ -187,6 +197,8 @@ namespace Components.Buildings
                 Destroy(Instantiate(destructionEffect, transform.position, Quaternion.identity), 0.667f); 
             }
             Destroy(gameObject);
+            
+            EventManager.OnGridRelease?.Invoke(transform.position);
         }
         /// <summary>
         /// 白天开始时的处理（建筑自动恢复）
@@ -214,31 +226,13 @@ namespace Components.Buildings
         /// <summary>
         /// 获取建筑信息文本
         /// </summary>
-        public virtual string GetInfoText()
+        public string GetInfoText()
         {
-            string info = $"<b>{buildingData.BuildingName} (等级 {LevelIndex + 1})</b>\n";
-            info += $"生命值: {_healthComponent.CurrentHP}/{_healthComponent.MaxHP}\n";
-            var levelData = buildingData.LevelDatas[LevelIndex];
-
-            if (buildingData.IsHousing)
-                info += $"提供人口: +{levelData.PopulationCapacity}\n";
-
-            if (buildingData.IsProduction)
-                info += $"产出: {levelData.BaseProduction} {buildingData.ResourceType}\n";
-            
-            if (buildingData.IsTower)
+            if (InfoProvider != null)
             {
-                info += $"伤害: {levelData.MinDamage}-{levelData.MaxDamage}\n";
-                info += $"攻速: {levelData.AttackInterval} 秒/次\n";
-                info += $"射程: {levelData.AttackRange} 格\n";
+                return InfoProvider.GetInfoText();
             }
-
-            if (HasNextLevel)
-                info += $"\n<b>升级需要: {buildingData.LevelDatas[LevelIndex].UpgradeCost} 金币</b>";
-            else if (isBuilt)
-                info += "\n<b>已达到最高等级</b>";
-
-            return info;
+            return Data.Description;
         }
 
         private void OnTakeDamage(int amount)
@@ -257,58 +251,5 @@ namespace Components.Buildings
             // 恢复正常
             spriteRenderer.material.SetFloat(FlashAmountID, 0f);
         }
-        
-        // ... (rest of the class remains the same) ...
-        public int GetAvailableSlotCount()
-        {
-            int count = 0;
-            if (attackSlots == null) return 0;
-            foreach (var slot in attackSlots)
-            {
-                if (slot.Value == null)
-                    count++;
-            }
-            return count;
-        }
-        public void DebugSlotStatus()
-        {
-            Debug.Log($"建筑 {name} 槽位状态：");
-            if (attackSlots == null) return;
-            foreach (var slot in attackSlots)
-            {
-                string enemyName = slot.Value != null ? slot.Value.name : "空闲";
-                Debug.Log($"  槽位 {slot.Key}: {enemyName}");
-            }
-            Debug.Log($"  总槽位: {attackSlots.Count}, 可用槽位: {GetAvailableSlotCount()}");
-        }
-        /*private void OnDrawGizmos()
-        {
-            if (attackSlots == null || attackSlots.Count == 0) return;
-    
-            foreach (var slot in attackSlots)
-            {
-                Vector3 slotWorldPos = GridManager.Instance.GridToWorldCenter(slot.Key.x, slot.Key.y);
-        
-                if (slot.Value == null)
-                {
-                    Gizmos.color = Color.green;
-                    Gizmos.DrawWireCube(slotWorldPos, Vector3.one * 0.8f);
-                }
-                else
-                {
-                    Gizmos.color = Color.red;
-                    Gizmos.DrawCube(slotWorldPos, Vector3.one * 0.6f);
-            
-                    if (slot.Value != null)
-                    {
-                        Gizmos.color = Color.yellow;
-                        Gizmos.DrawLine(slotWorldPos, slot.Value.transform.position);
-                    }
-                }
-        
-                Gizmos.color = Color.white;
-                Gizmos.DrawLine(transform.position, slotWorldPos);
-            }
-        }*/
     }
 }

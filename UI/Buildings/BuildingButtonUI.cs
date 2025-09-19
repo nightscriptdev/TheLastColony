@@ -15,7 +15,6 @@ namespace UI.Buildings
         
         [SerializeField] private BuildingData buildingData;
         public BuildingData BuildingData => buildingData;
-        
         private bool isAffordable;
         private string staticTooltip;
 
@@ -38,19 +37,6 @@ namespace UI.Buildings
             // 属性
             infoBuilder.AppendLine($"建造成本: {data.BuildCost} 金币");
             infoBuilder.AppendLine($"生命值: {levelData.MaxHP}");
-            
-            if (buildingData.IsHousing)
-                infoBuilder.AppendLine($"人口上限: +{levelData.PopulationCapacity}");
-            
-            if (buildingData.IsProduction)
-                infoBuilder.AppendLine($"产出: {levelData.BaseProduction} {buildingData.ResourceType} / 30秒");
-            
-            if (buildingData.IsTower)
-            {
-                infoBuilder.AppendLine($"伤害: {levelData.MinDamage}-{levelData.MaxDamage}");
-                infoBuilder.AppendLine($"射程: {levelData.AttackRange} 格");
-                infoBuilder.AppendLine($"攻速: {levelData.AttackInterval} 秒/次");
-            }
 
             staticTooltip = infoBuilder.ToString();
         }
@@ -105,11 +91,11 @@ namespace UI.Buildings
             string tooltip = String.Empty;
             if (!TimeManager.Instance.IsDay)
             {
-                tooltip = $"<color=red>只能在白天建造</color>";
+                tooltip = $"<color=red>只能在白天建造\n</color>";
             }
             else if (!isAffordable)
             {
-                tooltip = $"<color=red>金币不足</color>";
+                tooltip = $"<color=red>金币不足\n</color>";
             }
             
             return tooltip + staticTooltip;

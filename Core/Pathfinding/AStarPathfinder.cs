@@ -9,19 +9,10 @@ namespace Core.Pathfinding
     /// </summary>
     public class AStarPathfinder
     {
-        /// <summary>
-        /// 寻找路径
-        /// </summary>
-        /// <param name="startPos">起始 世界坐标</param>
-        /// <param name="targetPos">目标 世界坐标</param>
-        /// <returns>路径点列表 世界坐标</returns>
-        public List<Vector3> FindPath(Vector2Int startGrid, Vector2Int targetGrid, out PathfindingNode endNode)
+        public List<Vector3> FindPath(Vector2Int startGrid, Vector2Int targetGrid, out PathfindingNode endNode, bool findAdjacentIfBlocked = false)
         {
-            //Vector2Int startGrid = GridManager.Instance.WorldToGrid(startPos);
-            //Vector2Int targetGrid = GridManager.Instance.WorldToGrid(targetPos);
-            
-            if (!GridManager.Instance.IsWalkable(startGrid.x, startGrid.y) || 
-                !GridManager.Instance.IsWalkable(targetGrid.x, targetGrid.y))
+            // 检查起点是否可通行
+            if (!GridManager.Instance.IsWalkable(startGrid.x, startGrid.y))
             {
                 endNode = null;
                 return null;
@@ -38,13 +29,24 @@ namespace Core.Pathfinding
             openSet.Add(startNode);
             nodeMap[startGrid] = startNode;
             
+            PathfindingNode closestNode = startNode;
+            int smallestHCost = startNode.hCost;
+
             while (openSet.Count > 0)
             {
                 PathfindingNode currentNode = GetLowestFCostNode(openSet);
                 openSet.Remove(currentNode);
                 closedSet.Add(currentNode.gridPosition);
+    
+                // 更新最近节点（使用hCost）
+                if (currentNode.hCost < smallestHCost)
+                {
+                    smallestHCost = currentNode.hCost;
+                    closestNode = currentNode;
+                }
                 
-                if (currentNode.gridPosition == targetGrid)
+                // 检查是否到达目标
+                if (currentNode.gridPosition == targetGrid || (findAdjacentIfBlocked && GridManager.IsAdjacent(currentNode.gridPosition, targetGrid)))
                 {
                     endNode = currentNode;
                     return RetracePath(currentNode);
@@ -57,11 +59,11 @@ namespace Core.Pathfinding
                 {
                     if (closedSet.Contains(neighborPos))
                         continue;
-
+                        
                     Vector2Int direction = neighborPos - currentNode.gridPosition;
                     int moveCost = (Mathf.Abs(direction.x) == 1 && Mathf.Abs(direction.y) == 1) ? 14 : 10;
                     int newGCost = currentNode.gCost + moveCost;
-
+                    
                     // 确保 nodeMap 中有该节点实例（不会重复new不同实例）
                     PathfindingNode neighborNode;
                     if (!nodeMap.TryGetValue(neighborPos, out neighborNode))
@@ -69,9 +71,8 @@ namespace Core.Pathfinding
                         neighborNode = new PathfindingNode(neighborPos);
                         neighborNode.CalculateHCost(targetGrid);
                         nodeMap[neighborPos] = neighborNode;
-                        // 不在这里加入 openSet —— 先比较 gCost，再决定是否加入
                     }
-
+                    
                     // 只有当找到更优路径时才更新，并在必要时加入 openSet
                     if (newGCost < neighborNode.gCost)
                     {
@@ -83,8 +84,9 @@ namespace Core.Pathfinding
                 }
             }
             
-            endNode = null;
-            return null;
+            // 无法到达目标，返回最近的可达点
+            endNode = closestNode;
+            return RetracePath(closestNode);
         }
         
         /// <summary>
@@ -107,7 +109,7 @@ namespace Core.Pathfinding
         /// <summary>
         /// 回溯路径
         /// </summary>
-        private List<Vector3> RetracePath(PathfindingNode endNode)
+        public List<Vector3> RetracePath(PathfindingNode endNode)
         {
             List<Vector3> path = new List<Vector3>();
             PathfindingNode currentNode = endNode;

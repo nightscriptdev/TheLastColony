@@ -86,9 +86,9 @@ namespace Data.Buildings
         /// <summary>
         /// 获取指定等级的随机伤害值
         /// </summary>
-        public int GetRandomDamage(int levelIndex)
+        public int GetRandomDamage(int level)
         {
-            var data = LevelDatas[levelIndex];
+            var data = LevelDatas[level-1];
             return Random.Range(data.MinDamage, data.MaxDamage + 1);
         }
     }

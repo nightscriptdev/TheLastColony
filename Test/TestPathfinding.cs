@@ -56,6 +56,15 @@ namespace Test
         {
             if (currentPath == null || pathIndex >= currentPath.Count) return;
 
+            if (pathIndex == 0)
+            {
+                if (GridManager.Instance.WorldToGrid(transform.position) == GridManager.Instance.WorldToGrid(currentPath[0]))
+                {
+                    pathIndex++;
+                    if (pathIndex >= currentPath.Count) return;
+                }
+            }
+            
             Vector3 targetPos = currentPath[pathIndex];
             transform.position = Vector3.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);
 

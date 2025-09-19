@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Data.Buildings;
 using Enums;
+using Interface;
 using Managers;
 
 namespace Components.Buildings
@@ -10,7 +11,7 @@ namespace Components.Buildings
     /// <summary>
     /// 魔法塔战斗组件
     /// </summary>
-    public class TowerComponent : MonoBehaviour
+    public class TowerComponent : MonoBehaviour, IInfoProvider
     {
         [Header("攻击设置")] [SerializeField] private Transform firePoint; // 发射点
         [Header("子弹预制体")] [SerializeField] private GameObject projectilePrefab; // 子弹
@@ -26,7 +27,8 @@ namespace Components.Buildings
         private void Awake()
         {
             buildingComponent = GetComponent<BuildingComponent>();
-
+            buildingComponent.InfoProvider = this;
+            
             // 如果没有设置发射点，使用建筑本身的位置
             if (firePoint == null)
                 firePoint = transform;
@@ -74,7 +76,7 @@ namespace Components.Buildings
         {
             while (true)
             {
-                yield return new WaitForSeconds(buildingComponent.Data.LevelDatas[buildingComponent.LevelIndex].AttackInterval);
+                yield return new WaitForSeconds(buildingComponent.LevelData.AttackInterval);
                 AttackNearestEnemy();
             }
         }
@@ -83,9 +85,9 @@ namespace Components.Buildings
         {
             Transform target = EnemyManager.Instance.GetNearestEnemy(transform.position);
             if (target == null) return;
-            var levelData = buildingComponent.Data.LevelDatas[buildingComponent.LevelIndex];
+            var levelData = buildingComponent.LevelData;
             if (Vector2.Distance(target.position, transform.position) > levelData.AttackRange) return;
-            int damage = buildingComponent.Data.GetRandomDamage(buildingComponent.LevelIndex);
+            int damage = buildingComponent.Data.GetRandomDamage(buildingComponent.Level);
             switch (levelData.AttackType)
             {
                 case TowerAttackType.Single:
@@ -210,7 +212,7 @@ namespace Components.Buildings
                 if (target != null)
                 {
                     // 只执行单次攻击，不触发新的连击
-                    PerformSingleBeamAttack(target, damage, buildingComponent.Data.LevelDatas[buildingComponent.LevelIndex]);
+                    PerformSingleBeamAttack(target, damage, buildingComponent.LevelData);
                     if (i < remainingAttacks - 1)
                         yield return new WaitForSeconds(0.3f);
                 }
@@ -228,7 +230,7 @@ namespace Components.Buildings
                 rangeIndicator.SetActive(true);
 
                 // 设置范围大小
-                float range = buildingComponent.Data.LevelDatas[buildingComponent.LevelIndex].AttackRange;
+                float range = buildingComponent.LevelData.AttackRange;
                 rangeIndicator.transform.localScale = Vector3.one * range * 2; // 直径
             }
         }
@@ -242,6 +244,27 @@ namespace Components.Buildings
             {
                 rangeIndicator.SetActive(false);
             }
+        }
+
+
+        public string GetInfoText()
+        {
+            string info = $"伤害: {buildingComponent.LevelData.MinDamage}-{buildingComponent.LevelData.MaxDamage}\n";
+            info += $"攻速: {buildingComponent.LevelData.AttackInterval} 秒/次\n";
+            info += $"射程: {buildingComponent.LevelData.AttackRange}\n";
+            
+            
+            var effects = new List<string>();
+            if (buildingComponent.LevelData.HasSlowEffect)
+                effects.Add("附带减速效果");
+            if (buildingComponent.LevelData.PierceCount > 1)
+                effects.Add($"穿透{buildingComponent.LevelData.PierceCount}个敌人");
+            if (buildingComponent.LevelData.MultiShotCount > 1)
+                effects.Add($"发射{buildingComponent.LevelData.MultiShotCount}发子弹");
+            if (buildingComponent.LevelData.ConsecutiveAttacks > 1)
+                effects.Add($"连续攻击{buildingComponent.LevelData.ConsecutiveAttacks}次");
+
+            return info + (effects.Count > 0 ? "\n" + string.Join("\n", effects) : "");
         }
     }
 }

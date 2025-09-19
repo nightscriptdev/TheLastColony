@@ -37,11 +37,15 @@ namespace Core.Grid
         void OnEnable()
         {
             EventManager.OnBuildingPlaced += OnBuildingPlaced;
+            EventManager.OnEnemyStayed += OnEnemyStayed;
+            EventManager.OnGridRelease += OnGridRelease;
         }
         
         void OnDisable()
         {
             EventManager.OnBuildingPlaced -= OnBuildingPlaced;
+            EventManager.OnEnemyStayed -= OnEnemyStayed;
+            EventManager.OnGridRelease -= OnGridRelease;
         }
         
         /// <summary>
@@ -121,9 +125,9 @@ namespace Core.Grid
         /// <summary>
         /// 寻找路径
         /// </summary>
-        public List<Vector3> FindPath(Vector2Int startGrid, Vector2Int targetGrid, out PathfindingNode endNode)
+        public List<Vector3> FindPath(Vector2Int startGrid, Vector2Int targetGrid, out PathfindingNode endNode, bool findAdjacentIfBlocked = false)
         {
-            return pathfinder.FindPath(startGrid, targetGrid, out endNode);
+            return pathfinder.FindPath(startGrid, targetGrid, out endNode, findAdjacentIfBlocked);
         }
         
         public List<Vector3> FindPath(Vector3 startWorldPos, Vector3 targetWorldPos, out PathfindingNode endNode)
@@ -155,7 +159,11 @@ namespace Core.Grid
         public void SetCellState(int x, int y, CellState state)
         {
             if (IsValidGridPosition(x, y))
+            {
                 gridArray[x, y] = state;
+                if(state != CellState.Walkable)
+                    EventManager.OnCellBecomeObstacle?.Invoke(GridToWorldCenter(x, y));
+            }
         }
         
         /// <summary>
@@ -234,113 +242,87 @@ namespace Core.Grid
         
         public List<Vector3> GetNearestPathToTarget(EnemyComponent enemy, out BuildingComponent targetBuilding)
         {
-            var allBuildings = BuildingManager.Instance.AllBuildings;
-            if (allBuildings == null || allBuildings.Count == 0)
-            {
-                targetBuilding = null;
-                return null;
-            }
-            BuildingComponent nearestBuilding = null;
-            float shortestPathCost = float.MaxValue;
-            List<Vector2Int> walkableNeighbors;
-            Vector2Int targetGrid = Vector2Int.zero;
-            PathfindingNode endNode =null;
-            List<Vector3> path;
-            List<Vector3> nearestPath = null;
             targetBuilding = null;
             
-            Vector2Int startGrid = WorldToGrid(enemy.transform.position);
-            bool areSlotsFull = true;
-            foreach (var building in allBuildings)
+            if (BuildingManager.Instance.AllBuildings == null || BuildingManager.Instance.AllBuildings.Count == 0)
             {
-                if(building.Data.BuildingType == BuildingType.DefenseCrystal) continue; //先找非DefenseCrystal建筑
-                
-                if (building.attackSlots.Count == 0) continue;
-                float minHCost = float.MaxValue;
-                
-                foreach (var buildingAttackSlot in building.attackSlots)
+                return null;
+            }
+            
+            var allBuildings = new List<BuildingComponent>(BuildingManager.Instance.AllBuildings);
+            Vector2Int targetGrid = Vector2Int.zero;
+            PathfindingNode endNode = null;
+            List<Vector3> path;
+            
+            Vector2Int startGrid = WorldToGrid(enemy.transform.position);
+            bool onlyDefenseCrystalsLeft = false;
+            PathfindingNode closestNode = new PathfindingNode();
+            closestNode.hCost = int.MaxValue;
+            BuildingComponent currentTargetBuilding = null; // 记录当前目标建筑
+            BuildingComponent closestTargetBuilding = null; // 记录最接近的建筑
+            
+            while (allBuildings.Count > 0)
+            {
+                if (FindBestTargetGrid())
                 {
-                    if (buildingAttackSlot.Value) continue;
-                    areSlotsFull = false;
-                    var cost = PathfindingNode.OctileDistance(startGrid, buildingAttackSlot.Key);
-                    if (cost < minHCost)
+                    path = FindPath(startGrid, targetGrid, out endNode, true);
+                    if (path != null && IsAdjacent(endNode.gridPosition, targetGrid))
                     {
-                        minHCost = cost;
-                        targetGrid = buildingAttackSlot.Key;
+                        targetBuilding = currentTargetBuilding;
+                        return path;
+                    }
+                    if (endNode != null && endNode.hCost < closestNode.hCost)
+                    {
+                        closestNode = endNode;
+                        closestTargetBuilding = currentTargetBuilding;
                     }
                 }
-                
-                if(areSlotsFull)                         
-                    targetGrid = building.attackSlots.Keys.ElementAt(Random.Range(0, building.attackSlots.Count));
-                
-                //path = FindPath(startGrid, walkableNeighbors[Random.Range(0, walkableNeighbors.Count)], out endNode);
-                path = FindPath(startGrid, targetGrid, out endNode);
-                
-                if (endNode != null)
+                else if (!onlyDefenseCrystalsLeft)
                 {
-                    if (endNode.gCost < shortestPathCost)
-                    {
-                        shortestPathCost = endNode.gCost;
-                        targetBuilding = building;
-                        nearestPath = path;
-                        building.attackSlots[targetGrid] = enemy;
-                    }
+                    onlyDefenseCrystalsLeft = true;
                 }
                 else
                 {
-                    building.attackSlots.Remove(targetGrid);
+                    // 所有建筑都已尝试，跳出循环避免无限循环
+                    break;
                 }
             }
-            if (endNode != null)
+            
+            targetBuilding = closestTargetBuilding;
+            Debug.Log(enemy.name, enemy.gameObject);
+            return pathfinder.RetracePath(closestNode);
+            
+            bool FindBestTargetGrid()
             {
-                return nearestPath;
-            }
-            foreach (var building in allBuildings)
-            {
-                if (building.Data.BuildingType == BuildingType.DefenseCrystal) //只找DefenseCrystal建筑
+                int currentBuildingIndex = -1;
+                float minHCost = float.MaxValue;
+                
+                for (int i = 0; i < allBuildings.Count; i++)
                 {
+                    var building = allBuildings[i];
+                    if (!onlyDefenseCrystalsLeft && building.Data.BuildingType == BuildingType.DefenseCrystal) 
+                        continue; // 先找非DefenseCrystal建筑
                     
-                    if (building.attackSlots.Count == 0) continue;
-                    float minHCost = float.MaxValue;
-                
-                    foreach (var buildingAttackSlot in building.attackSlots)
+                    var cost = PathfindingNode.OctileDistance(startGrid, building.GridPosition);
+                    if (cost < minHCost)
                     {
-                        if (buildingAttackSlot.Value != null)
-                        {
-                            areSlotsFull = false;
-                            var cost = PathfindingNode.OctileDistance(startGrid, buildingAttackSlot.Key);
-                            if (cost < minHCost)
-                            {
-                                minHCost = cost;
-                                targetGrid = buildingAttackSlot.Key;
-                            }
-                        }
-                    }
-                
-                    if(areSlotsFull)                         
-                        targetGrid = building.attackSlots.Keys.ElementAt(Random.Range(0, building.attackSlots.Count));
-                
-                    //path = FindPath(startGrid, walkableNeighbors[Random.Range(0, walkableNeighbors.Count)], out endNode);
-                    path = FindPath(startGrid, targetGrid, out endNode);
-                
-                    if (endNode != null)
-                    {
-                        if (endNode.gCost < shortestPathCost)
-                        {
-                            shortestPathCost = endNode.gCost;
-                            targetBuilding = building;
-                            nearestPath = path;
-                            building.attackSlots[targetGrid] = enemy;
-                        }
-                    }
-                    else
-                    {
-                        building.attackSlots.Remove(targetGrid);
+                        targetGrid = building.GridPosition;
+                        currentBuildingIndex = i;
+                        minHCost = cost;
+                        currentTargetBuilding = building; // 记录目标建筑
                     }
                 }
+                
+                if (currentBuildingIndex != -1)
+                {
+                    allBuildings.RemoveAt(currentBuildingIndex);
+                    return true;
+                }
+                
+                return false; // 没找到有效目标
             }
-            return nearestPath;
         }
+
         
         /*public List<Vector3> GetNearestPathToTarget(Vector3 start, out BuildingComponent targetBuilding)
         {
@@ -428,6 +410,18 @@ namespace Core.Grid
             }
             return nearestPath;
         }*/
+
+        void OnEnemyStayed(Vector3 pos)
+        {
+            var grid = WorldToGrid(pos);
+            SetCellState(grid.x, grid.y, CellState.EnemyObstacle);
+        }
+        
+        void OnGridRelease(Vector3 pos)
+        {
+            var grid = WorldToGrid(pos);
+            SetCellState(grid.x, grid.y, CellState.Walkable);
+        }
         
         void OnDrawGizmos()
         {
@@ -473,7 +467,7 @@ namespace Core.Grid
             }
         }
         
-        public static bool IsNeighbor(Vector2Int self, Vector2Int other)
+        public static bool IsAdjacent(Vector2Int self, Vector2Int other)
         {
             int dx = Mathf.Abs(other.x - self.x);
             int dy = Mathf.Abs(other.y - self.y);

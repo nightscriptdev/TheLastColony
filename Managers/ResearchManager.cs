@@ -1,7 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Core;
 using Data;
+using Data.Buildings;
 using Enums;
 using UnityEngine;
 
@@ -15,7 +15,7 @@ namespace Managers
         private HashSet<ResearchData> completedResearches = new HashSet<ResearchData>();
         
         private HashSet<SkillType> unlockedSkills = new HashSet<SkillType>();
-        private HashSet<BuildingType> unlockedBuildings = new HashSet<BuildingType>();
+        private HashSet<BuildingKey> unlockedBuildings = new HashSet<BuildingKey>();
         
         // 检查是否可以研究
         public bool CanResearch(ResearchData research)
@@ -50,7 +50,7 @@ namespace Managers
             switch (research.type)
             {
                 case ResearchType.Building:
-                    unlockedBuildings.Add(research.unlockBuildingType);
+                    unlockedBuildings.Add(new BuildingKey(research.unlockBuildingType, research.unlockBuildingLevel));
                     break;
                 case ResearchType.Skill:
                     unlockedSkills.Add(research.unlockSkill);
@@ -65,17 +65,7 @@ namespace Managers
         // 检查是否已研究
         public bool IsResearched(ResearchData research)
         {
-            switch (research.type)
-            {
-                case ResearchType.Building:
-                    return unlockedBuildings.Contains(research.unlockBuildingType);
-                    break;
-                case ResearchType.Skill:
-                    return unlockedSkills.Contains(research.unlockSkill);
-                    break;
-                default:
-                    return false;
-            }
+            return completedResearches.Contains(research);
         }
         
         // 检查建筑等级是否已解锁
@@ -108,11 +98,12 @@ namespace Managers
         public bool IsSkillUnlocked(SkillType skillType)
         {
             return unlockedSkills.Contains(skillType);
+
         }
         
-        public bool IsBuildingUnlocked(BuildingType buildingType)
+        public bool IsBuildingUnlocked(BuildingKey buildingKey)
         {
-            return unlockedBuildings.Contains(buildingType);
+            return unlockedBuildings.Contains(buildingKey);
         }
         
         // 检查是否有技能专精

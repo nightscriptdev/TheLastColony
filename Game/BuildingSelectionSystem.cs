@@ -123,7 +123,7 @@ namespace Game
             // 显示建筑信息面板
             if (buildingInfoPanel != null)
             {
-                PositionBuildingInfoPanel(building.transform.position);
+                //PositionBuildingInfoPanel(building.transform.position);
                 buildingInfoPanel.Show(building);
             }
             

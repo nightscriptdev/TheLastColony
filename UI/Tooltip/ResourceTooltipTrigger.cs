@@ -1,8 +1,8 @@
 ﻿using System.Text;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using Core;
 using Enums;
+using Managers;
 
 namespace UI.Tooltip
 {
@@ -67,6 +67,31 @@ namespace UI.Tooltip
             tooltip.AppendLine("<color=orange>提示:</color>");
             tooltip.AppendLine("• 人口在未达上限且食物充足时增长");
             tooltip.Append("• <color=red>人口归0时游戏结束</color>");
+
+            /*var loc = LocalizationManager.Instance;
+            // 基本信息
+            tooltip.AppendLine($"<b>{loc.GetGameText("resource.population")}</b>");
+            tooltip.AppendLine(loc.GetGameText("tooltip.population.current", rm.Population.ToString("N0")));
+            tooltip.AppendLine(loc.GetGameText("tooltip.population.max", rm.MaxPopulation.ToString("N0")));
+            tooltip.AppendLine();
+            
+            // 人口影响
+            tooltip.AppendLine($"<color=lightblue>{loc.GetGameText("tooltip.population.effects")}:</color>");
+            float populationBonus = rm.Population * 0.02f * 100f;
+            tooltip.AppendLine(loc.GetGameText("tooltip.population.production_bonus", populationBonus.ToString("F1")));
+            tooltip.AppendLine();
+            
+            // 每日消耗
+            tooltip.AppendLine($"<color=lightblue>{loc.GetGameText("tooltip.population.daily_consumption")}:</color>");
+            tooltip.AppendLine(loc.GetGameText("tooltip.population.food_per_person"));
+            tooltip.AppendLine(loc.GetGameText("tooltip.population.current_consumption", rm.Population));
+            tooltip.AppendLine(loc.GetGameText("tooltip.population.food_shortage_warning"));
+            tooltip.AppendLine();
+            
+            // 附加说明
+            tooltip.AppendLine($"<color=orange>{loc.GetGameText("tooltip.tips")}:</color>");
+            tooltip.AppendLine(loc.GetGameText("tooltip.population.growth_condition"));
+            tooltip.Append($"<color=red>{loc.GetGameText("tooltip.population.game_over_warning")}</color>");*/
     
             return tooltip.ToString();
         }
@@ -85,7 +110,7 @@ namespace UI.Tooltip
             tooltip += $"• 今日需要: {rm.Population} 食物\n\n";
             tooltip += $"<color=green>获取方式:</color>\n";
             tooltip += $"• 建造农田生产\n";
-            tooltip += $"• 只有白天会产出\n";
+            tooltip += $"• 只在白天产出\n";
             
             if (rm.Food < rm.Population)
             {
@@ -108,7 +133,7 @@ namespace UI.Tooltip
             tooltip += $"• 升级建筑\n\n";
             tooltip += $"<color=green>获取方式:</color>\n";
             tooltip += $"• 建造矿场生产\n";
-            tooltip += $"• 只有白天会产出";
+            tooltip += $"• 只在白天产出";
             
             return tooltip;
         }
@@ -128,7 +153,7 @@ namespace UI.Tooltip
             tooltip += $"• 释放技能\n\n";
             tooltip += $"<color=green>获取方式:</color>\n";
             tooltip += $"• 建造研究所生产\n";
-            tooltip += $"• 只有白天会产出";
+            tooltip += $"• 只在白天产出";
             
             return tooltip;
         }

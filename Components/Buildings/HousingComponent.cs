@@ -1,8 +1,9 @@
 ﻿using Core;
+using Interface;
 using UnityEngine;
 namespace Components.Buildings
 {
-    public class HousingComponent : MonoBehaviour
+    public class HousingComponent : MonoBehaviour, IInfoProvider
     {
         private BuildingComponent buildingComponent;
         private int providedMaxPopulation = 0;
@@ -16,6 +17,7 @@ namespace Components.Buildings
             {
                 buildingComponent.OnBuildingCompleted += OnHousingBuilt;
                 buildingComponent.OnBuildingDestroyed += OnHousingDestroyed;
+                buildingComponent.OnBuildingUpgraded += OnBuildingUpgraded;
             }
         }
         private void OnDisable()
@@ -24,19 +26,28 @@ namespace Components.Buildings
             {
                 buildingComponent.OnBuildingCompleted -= OnHousingBuilt;
                 buildingComponent.OnBuildingDestroyed -= OnHousingDestroyed;
+                buildingComponent.OnBuildingUpgraded -= OnBuildingUpgraded;
+
             }
         }
         private void OnHousingBuilt(BuildingComponent building)
         {
-            providedMaxPopulation = building.Data.LevelDatas[building.LevelIndex].PopulationCapacity;
+            providedMaxPopulation = building.LevelData.PopulationCapacity;
             ResourceManager.Instance.IncreaseMaxPopulation(providedMaxPopulation);
-            Debug.Log($"房屋建成，增加 {providedMaxPopulation} 最大人口");
         }
         private void OnHousingDestroyed(BuildingComponent building)
         {
             ResourceManager.Instance.DecreaseMaxPopulation(providedMaxPopulation);
-            Debug.Log($"房屋被摧毁，减小 {providedMaxPopulation} 人口");
+        }
+
+        void OnBuildingUpgraded()
+        {
+            ResourceManager.Instance.DecreaseMaxPopulation(buildingComponent.Data.LevelDatas[buildingComponent.Level-2].PopulationCapacity);
         }
         public int ProvidedPopulation => providedMaxPopulation;
+        public string GetInfoText()
+        {
+            return buildingComponent.Data.Description + "\n+" + buildingComponent.LevelData.PopulationCapacity + "人口上限";
+        }
     }
 }

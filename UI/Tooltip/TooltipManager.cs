@@ -38,6 +38,7 @@ namespace UI
         
         public void Show(string content)
         {
+            if (string.IsNullOrEmpty(content)) return;
             if (showCoroutine != null)
             {
                 StopCoroutine(showCoroutine);
@@ -70,7 +71,7 @@ namespace UI
 
         private void ShowTooltip(string content)
         {
-            if (tooltipText != null && !string.IsNullOrEmpty(content))
+            if (tooltipText != null)
             {
                 tooltipText.text = content;
                 tooltip.SetActive(true);

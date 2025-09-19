@@ -4,6 +4,7 @@
     {
         Walkable,       // 可通行
         TerrainObstacle, // 地形障碍
-        BuildingObstacle // 建筑障碍
+        BuildingObstacle, // 建筑障碍
+        EnemyObstacle, // 建筑障碍
     }
 }

@@ -158,10 +158,7 @@ public class HealthBarUI : MonoBehaviour
     /// </summary>
     public void ShowHealthBar()
     {
-        if (healthComponent != null && !healthComponent.IsFullHealth)
-        {
-            healthBar.SetActive(true);
-        }
+        healthBar.SetActive(true);
     }
     
     /// <summary>

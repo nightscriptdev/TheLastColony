@@ -9,7 +9,11 @@ namespace Core.Pathfinding
         public int hCost; // 启发式代价
         public int FCost => gCost + hCost; // 总代价
         public PathfindingNode parent; // 父节点
-        
+
+        public PathfindingNode()
+        {
+            
+        }
         public PathfindingNode(Vector2Int gridPosition)
         {
             this.gridPosition = gridPosition;

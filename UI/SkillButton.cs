@@ -1,7 +1,6 @@
 ﻿using System;
 using Core;
 using Data;
-using Enums;
 using Managers;
 using TMPro;
 using UI.Tooltip;

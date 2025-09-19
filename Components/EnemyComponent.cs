@@ -26,7 +26,7 @@ namespace Components.Enemies
         [Header("AI 参数")]
         [SerializeField] private float aiUpdateFrequency = 0.2f;
         [SerializeField] private float attackRange = 1.5f;
-        [SerializeField] private float toleranceRange = 2.9f;
+        //[SerializeField] private float toleranceRange = 2.9f;
         [SerializeField] private float attackCooldownTime = 2f;
         [SerializeField] private float blockedTime = 1.5f;
         private float blockedTimer = 0;
@@ -47,6 +47,7 @@ namespace Components.Enemies
         private static readonly int FlashAmountID = Shader.PropertyToID("_FlashAmount");
         private static readonly int FlashColorID = Shader.PropertyToID("_FlashColor");
         
+        bool isOccupyingGrid = false;
         
         
         private enum EnemyState
@@ -82,6 +83,7 @@ namespace Components.Enemies
             healthComponent.OnDeath += OnEnemyDeath;
             healthComponent.OnTakeDamage += OnTakeDamage;
             EventManager.OnDayStart += OnDayStart;
+            EventManager.OnCellBecomeObstacle += OnCellBecomeObstacle;
         }
         
         private void OnDisable()
@@ -89,6 +91,8 @@ namespace Components.Enemies
             healthComponent.OnDeath -= OnEnemyDeath;
             healthComponent.OnTakeDamage -= OnTakeDamage;
             EventManager.OnDayStart -= OnDayStart;
+            EventManager.OnCellBecomeObstacle -= OnCellBecomeObstacle;
+
         }
         
         public void Initialize(EnemyData data, int currentDay)
@@ -269,8 +273,19 @@ namespace Components.Enemies
                 currentPath = GridManager.Instance.GetNearestPathToTarget(this, out currentTarget);
                 if (currentPath != null)
                 {
-                    currentPathIndex = 0; 
+                    currentPathIndex = 0;
+                    ReleaseGrid();
+
                 }
+            }
+        }
+
+        void ReleaseGrid()
+        {
+            if (isOccupyingGrid)
+            {
+                isOccupyingGrid = false;
+                EventManager.OnGridRelease?.Invoke(transform.position);
             }
         }
         
@@ -325,12 +340,12 @@ namespace Components.Enemies
             return nearestBuilding;
         }*/
         
-        private void UpdatePath()
+        /*private void UpdatePath()
         {
             if (currentTarget == null) return;
             
             PathfindingNode endNode;
-            List<Vector3> path = GridManager.Instance.FindPath(transform.position, currentTarget.transform.position, out endNode);
+            List<Vector3> path = GridManager.Instance.FindPath(transform.position, currentTarget.transform.position, out endNode, true);
             if(endNode != null)
             {
                 currentPath = path;
@@ -340,17 +355,29 @@ namespace Components.Enemies
             {
                 currentPath = null;
             }
-        }
+        }*/
         
         private void MoveAlongPath()
         {
             if (currentPath == null || currentPathIndex >= currentPath.Count || currentTarget==null) return;
-            Vector3 targetPos;
-            if (Vector2.Distance(transform.position, currentTarget.transform.position) <= toleranceRange)
+            
+            // 判断是否和路径的第一个点在同一个格子
+            if (currentPathIndex == 0)
             {
-                targetPos = currentTarget.transform.position;
+                if (GridManager.Instance.WorldToGrid(transform.position) == GridManager.Instance.WorldToGrid(currentPath[0]))
+                {
+                    currentPathIndex++;
+                    if (currentPathIndex >= currentPath.Count) return;
+                }
             }
-            else targetPos = currentPath[currentPathIndex];
+            
+            Vector3 targetPos = currentPath[currentPathIndex];
+
+            if (!isOccupyingGrid && currentPathIndex == currentPath.Count - 1)
+            {
+                isOccupyingGrid = true;
+                EventManager.OnEnemyStayed?.Invoke(targetPos);
+            }
             
             Vector3 moveDirection = (targetPos - transform.position).normalized;
             Vector3 separation = CalculateSeparationForce();
@@ -501,6 +528,7 @@ namespace Components.Enemies
             // 延迟一帧销毁，以防其他对象在本帧还需要引用它
             Destroy(gameObject);
             EventManager.OnEnemyDeath?.Invoke(this);
+            ReleaseGrid();
         }
         
         private void OnDayStart(int day)
@@ -526,6 +554,16 @@ namespace Components.Enemies
         public void InstantKill()
         {
             OnEnemyDeath();
+        }
+
+        void OnCellBecomeObstacle(Vector3 pos)
+        {
+            if(currentPath == null || isOccupyingGrid) return;
+            if (currentPath.Contains(pos))
+            {
+                currentTarget = null;
+                UpdateTarget();
+            }
         }
         
         private void OnDrawGizmosSelected()

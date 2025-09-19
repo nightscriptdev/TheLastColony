@@ -65,7 +65,7 @@ namespace Managers
         private void OnGameStart()
         {
             // 初始化开局建筑
-            //InitializeStartingBuildings();
+            InitializeStartingBuildings();
         }
 
         /// <summary>
@@ -73,10 +73,11 @@ namespace Managers
         /// </summary>
         private void InitializeStartingBuildings()
         {
-            BuildingComponent[] existingBuildings = FindObjectsOfType<BuildingComponent>();
-            foreach (var building in existingBuildings)
+            foreach (Transform buildingTransform in buildingsParent)
             {
-                RegisterBuilding(building);
+                var buildingComponent = buildingTransform.GetComponent<BuildingComponent>();
+                buildingComponent.InitializePrebuilt(GridManager.Instance.WorldToGrid(buildingTransform.position));
+                RegisterBuilding(buildingComponent);
             }
         }
 
@@ -181,7 +182,8 @@ namespace Managers
                 
                 // 注册建筑
                 RegisterBuilding(buildingComponent);
-                Debug.Log($"建造 {currentBuildingData.BuildingName} 在位置 ({gridX}, {gridY})");
+
+                ResourceManager.Instance.SpendGold(buildingComponent.Data.BuildCost);
             }
         }
 
@@ -197,15 +199,8 @@ namespace Managers
             // 订阅事件
             building.OnBuildingCompleted += OnBuildingComplete;
             building.OnBuildingDestroyed += OnBuildingDestroyed;
-
+            
             EventManager. OnBuildingPlaced?.Invoke(building);
-
-            var neighbours = GridManager.Instance.GetWalkableNeighbors(building.GridPosition.x, building.GridPosition.y);
-            building.attackSlots = new Dictionary<Vector2Int, EnemyComponent>(neighbours.Count);
-            for (var i = 0; i < neighbours.Count; i++)
-            {
-                building.attackSlots.Add(neighbours[i], null);
-            }
         }
 
         /// <summary>
@@ -220,13 +215,6 @@ namespace Managers
         /// </summary>
         private void OnBuildingDestroyed(BuildingComponent building)
         {
-            foreach (var item in allBuildings)
-            {
-                if(GridManager.IsNeighbor(item.GridPosition, building.GridPosition))
-                    item.attackSlots.TryAdd(building.GridPosition, null);
-            }
-
-            // 从列表移除
             allBuildings.Remove(building);
         }
 
@@ -242,7 +230,7 @@ namespace Managers
             }
 
             // 从建筑当前等级的数据中获取升级到下一级所需的费用
-            int upgradeCost = building.Data.LevelDatas[building.LevelIndex].UpgradeCost;
+            int upgradeCost = building.LevelData.UpgradeCost;
 
             if (!ResourceManager.Instance.SpendGold(upgradeCost))
             {
