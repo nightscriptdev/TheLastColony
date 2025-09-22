@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using UnityEngine;
 using Enums;
+using Managers;
 
 namespace Data
 {
@@ -8,8 +9,8 @@ namespace Data
     public class SkillData : ScriptableObject
     {
         [Header("基本信息")]
-        public string skillName;
-        public string description;
+        //public string skillName;
+        //public string description;
         public Sprite icon;
         public SkillType skillType;
         
@@ -30,34 +31,43 @@ namespace Data
         public bool IsInstantDamage => skillType != SkillType.VoidVortex;
         public bool IsAOE => skillType != SkillType.Lightning;
 
+        public string GetLocalizedDescription()
+        {
+            return LocalizationManager.Instance.GetGameText("skill." + skillType + ".desc");
+        }
+        
+        public string GetLocalizedName()
+        {
+            return LocalizationManager.Instance.GetGameText("skill."+skillType);
+        }
+        
         public string GetTooltip()
         {
             StringBuilder sb = new StringBuilder();
+            var loc = LocalizationManager.Instance;
 
-            sb.AppendLine($"<b>{skillName}</b>");
-    
-            if (!string.IsNullOrEmpty(description))
-                sb.AppendLine(description);
+            sb.AppendLine($"<b>{GetLocalizedName()}</b>");
+            
+            sb.AppendLine(GetLocalizedDescription());
 
             sb.AppendLine();
 
-            sb.AppendLine($"消耗学识: {knowledgeCost}");
+            sb.AppendLine(loc.GetGameText("tooltip.skill.knowledge", knowledgeCost));
 
-            sb.AppendLine($"冷却时间: {cooldownTime:0.0} 秒");
+            sb.AppendLine(loc.GetGameText("tooltip.skill.cooldown", cooldownTime));
 
             if (IsInstantDamage)
-                sb.AppendLine($"伤害: {baseDamage}");
+                sb.AppendLine(loc.GetGameText("combat.damage") + baseDamage);
 
             if (IsAOE)
-                sb.AppendLine($"范围: {effectRadius:0.0}");
+                sb.AppendLine(loc.GetGameText("tooltip.skill.area", effectRadius*2));
 
             if (skillType == SkillType.VoidVortex)
-                sb.AppendLine($"持续时间: {duration:0.0} 秒");
+                sb.AppendLine(loc.GetGameText("tooltip.skill.duration", duration));
 
-            sb.AppendLine($"快捷键: {hotkey}");
+            sb.AppendLine(loc.GetGameText("tooltip.skill.hotkey", hotkey));
 
             return sb.ToString();
         }
-
     }
 }

@@ -14,13 +14,11 @@ namespace Game
 
         public override void Apply(EnemyComponent enemy)
         {
-            // 只通知敌人重新计算属性，不直接修改
             enemy.RecalculateStats();
         }
 
         public override void Remove(EnemyComponent enemy)
         {
-            // 移除时也一样
             enemy.RecalculateStats();
         }
     }

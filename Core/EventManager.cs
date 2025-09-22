@@ -52,31 +52,5 @@ namespace Core
         public static Action<Vector3> OnGridRelease;
 
         public static Action<Vector3> OnCellBecomeObstacle;
-    
-        /// <summary>
-        /// 清除所有事件订阅，主要用于场景切换时防止空引用
-        /// </summary>
-        public static void ClearAllEvents()
-        {
-            OnGameStart = null;
-            OnGameEnd = null;
-            OnGamePause = null;
-            OnGameResume = null;
-        
-            OnDayStart = null;
-            OnNightStart = null;
-            OnDayTick = null;
-            OnNightTick = null;
-            OnTimeScaleChanged = null;
-        
-            OnPopulationChanged = null;
-            OnFoodChanged = null;
-            OnGoldChanged = null;
-            OnKnowledgeChanged = null;
-        
-            OnRainStart = null;
-            OnRainStop = null;
-
-        }
     }
 }

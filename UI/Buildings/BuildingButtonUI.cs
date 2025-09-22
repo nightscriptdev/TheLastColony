@@ -1,8 +1,11 @@
 ﻿using System;
 using Core;
 using Data.Buildings;
+using Managers;
 using UI.Tooltip;
 using UnityEngine;
+using UnityEngine.Localization;
+using UnityEngine.Localization.Settings;
 using UnityEngine.UI;
 
 namespace UI.Buildings
@@ -16,46 +19,46 @@ namespace UI.Buildings
         [SerializeField] private BuildingData buildingData;
         public BuildingData BuildingData => buildingData;
         private bool isAffordable;
-        private string staticTooltip;
+        private string tooltip;
 
         private void Awake()
         {
             button.onClick.AddListener(OnButtonClick);
-            Initialize(buildingData);
-        }
-        
-        public void Initialize(BuildingData data)
-        {
-            this.buildingData = data;
-            var levelData = buildingData.LevelDatas[0];
+            UpdateTooltip(null);
+            LocalizationSettings.SelectedLocaleChanged += UpdateTooltip;
             
-            System.Text.StringBuilder infoBuilder = new System.Text.StringBuilder();
-            // 标题
-            infoBuilder.AppendLine($"<b><size=120%>{buildingData.BuildingName}</size></b>");
-            // 描述
-            infoBuilder.AppendLine($"<i>{buildingData.Description}</i>\n");
-            // 属性
-            infoBuilder.AppendLine($"建造成本: {data.BuildCost} 金币");
-            infoBuilder.AppendLine($"生命值: {levelData.MaxHP}");
-
-            staticTooltip = infoBuilder.ToString();
-        }
-
-        private void OnEnable()
-        {
             EventManager.OnGoldChanged += OnGoldChanged;
             EventManager.OnDayStart += OnDayStart;
             EventManager.OnNightStart += OnNightStart;
         }
 
-        protected override void OnDisable()
+        private void OnDestroy()
         {
-            base.OnDisable();
             EventManager.OnGoldChanged -= OnGoldChanged;
             EventManager.OnDayStart -= OnDayStart;
             EventManager.OnNightStart -= OnNightStart;
+            LocalizationSettings.SelectedLocaleChanged -= UpdateTooltip;
         }
 
+        public void UpdateTooltip(Locale locale)
+        {
+            var levelData = buildingData.LevelDatas[0];
+            var loc = LocalizationManager.Instance;
+            
+            System.Text.StringBuilder infoBuilder = new System.Text.StringBuilder();
+            
+            infoBuilder.AppendLine($"<b><size=120%>{loc.GetLocalizedBuildingName(buildingData.BuildingType)}</size></b>");
+            
+            // 描述 - 根据建筑类型获取本地化描述
+            infoBuilder.AppendLine($"<i>{loc.GetLocalizedBuildingDescription(buildingData.BuildingType)}</i>\n");
+            
+            // 属性
+            infoBuilder.AppendLine(loc.GetGameText("building.cost", buildingData.BuildCost));
+            infoBuilder.AppendLine(loc.GetGameText("building.health", levelData.MaxHP));
+
+            tooltip = infoBuilder.ToString();
+        }
+        
         private void OnButtonClick()
         {
             EventManager.OnBuildingButtonClick?.Invoke(buildingData.BuildingType);
@@ -91,14 +94,14 @@ namespace UI.Buildings
             string tooltip = String.Empty;
             if (!TimeManager.Instance.IsDay)
             {
-                tooltip = $"<color=red>只能在白天建造\n</color>";
+                tooltip = $"<color=red>{LocalizationManager.Instance.GetGameText("building.daytime_build_only")}\n</color>";
             }
             else if (!isAffordable)
             {
-                tooltip = $"<color=red>金币不足\n</color>";
+                tooltip = $"<color=red>{LocalizationManager.Instance.GetGameText("building.insufficient_gold")}\n</color>";
             }
             
-            return tooltip + staticTooltip;
+            return tooltip + this.tooltip;
         }
     }
 }

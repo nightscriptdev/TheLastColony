@@ -45,11 +45,17 @@ namespace UI
             for (var i = 0; i < speedButtonArray.Length; i++)
             {
                 var colors = speedButtonArray[i].colors;
-                
-                if(i == selectedIndex)
+
+                if (i == selectedIndex)
+                {
                     colors.normalColor = selectedColor;
+                    colors.highlightedColor = selectedColor;
+                }
                 else
+                {
                     colors.normalColor = normalColor;
+                    colors.highlightedColor = normalColor;
+                }
                 
                 speedButtonArray[i].colors = colors;
             }
@@ -60,7 +66,7 @@ namespace UI
         /// </summary>
         private void OnSpeedButtonClicked(int speedIndex)
         {
-            TimeManager.Instance?.SetTimeScale(speedIndex);
+            TimeManager.Instance?.SetTimeScale(speedIndex+1);
         }
 
         /// <summary>
@@ -68,7 +74,7 @@ namespace UI
         /// </summary>
         private void OnTimeScaleChanged(float newTimeScale)
         {
-            UpdateSelectedButton((int)newTimeScale);
+            UpdateSelectedButton((int)newTimeScale-1);
         }
     }
 }

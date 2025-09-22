@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using Components.Buildings;
 using Core;
 using Core.Grid;
-using Core.Pathfinding;
 using Data;
 using Managers;
 using UnityEngine;
@@ -18,24 +17,20 @@ namespace Components.Enemies
     /// </summary>
     public class EnemyComponent : MonoBehaviour
     {
-        [Header("组件引用")]
+        public Transform center;
         public SpriteRenderer spriteRenderer;
         [SerializeField] private Animator animator;
         
-        // REFACTOR: 将硬编码的数值暴露在Inspector中，方便调试和策划调整
         [Header("AI 参数")]
         [SerializeField] private float aiUpdateFrequency = 0.2f;
         [SerializeField] private float attackRange = 1.5f;
-        //[SerializeField] private float toleranceRange = 2.9f;
         [SerializeField] private float attackCooldownTime = 2f;
-        [SerializeField] private float blockedTime = 1.5f;
-        private float blockedTimer = 0;
         
         [Header("分离行为参数")]
         [SerializeField] private float separationRadius = 0.5f;
-        [SerializeField] private float separationForce = 2f;
-        [SerializeField] [Range(0, 1)] private float separationWeight = 0.3f; // 分离力占移动方向的权重
-        [Header("运行时数据")]
+        [SerializeField] private float separationForce = 1f;
+        [SerializeField] [Range(0, 1)] private float separationWeight = 0.5f; // 分离力占移动方向的权重
+
         private EnemyData enemyData;
         private HealthComponent healthComponent;
         private float currentSpeed;
@@ -47,8 +42,7 @@ namespace Components.Enemies
         private static readonly int FlashAmountID = Shader.PropertyToID("_FlashAmount");
         private static readonly int FlashColorID = Shader.PropertyToID("_FlashColor");
         
-        bool isOccupyingGrid = false;
-        
+        private Vector3? occupiedPosition = null;
         
         private enum EnemyState
         {
@@ -59,23 +53,22 @@ namespace Components.Enemies
         }
         private EnemyState currentState = EnemyState.Idle;
         
-        private float slowTimer = 0f;
-        
         private float attackCooldown = 0f;
         private bool isAttacking = false;
-        
+
         private void Awake()
         {
+            Physics2D.queriesStartInColliders = false;
+            
             healthComponent = GetComponent<HealthComponent>();
             if (healthComponent == null)
-            {
                 healthComponent = gameObject.AddComponent<HealthComponent>();
-            }
-            
             if (spriteRenderer == null)
                 spriteRenderer = GetComponent<SpriteRenderer>();
             if (animator == null)
                 animator = GetComponent<Animator>();
+            if(center == null)
+                center = transform.GetChild(0);
         }
         
         private void OnEnable()
@@ -83,7 +76,7 @@ namespace Components.Enemies
             healthComponent.OnDeath += OnEnemyDeath;
             healthComponent.OnTakeDamage += OnTakeDamage;
             EventManager.OnDayStart += OnDayStart;
-            EventManager.OnCellBecomeObstacle += OnCellBecomeObstacle;
+            EventManager.OnCellBecomeObstacle += OnCellBecameObstacle;
         }
         
         private void OnDisable()
@@ -91,25 +84,20 @@ namespace Components.Enemies
             healthComponent.OnDeath -= OnEnemyDeath;
             healthComponent.OnTakeDamage -= OnTakeDamage;
             EventManager.OnDayStart -= OnDayStart;
-            EventManager.OnCellBecomeObstacle -= OnCellBecomeObstacle;
-
+            EventManager.OnCellBecomeObstacle -= OnCellBecameObstacle;
         }
         
         public void Initialize(EnemyData data, int currentDay)
         {
             enemyData = data;
             
-            if (enemyData.idleSprite != null)
-                spriteRenderer.sprite = enemyData.idleSprite;
-            
             int hp = enemyData.GetHPForDay(currentDay);
             healthComponent.SetMaxHP(hp, true);
             
             currentSpeed = enemyData.baseSpeed;
             
-            attackCooldown = 0f;
             isAttacking = false;
-            slowTimer = 0f;
+            attackCooldown = 0f;
             currentPath = null;
             currentTarget = null;
             
@@ -118,19 +106,10 @@ namespace Components.Enemies
             
             StopAllCoroutines();
             StartCoroutine(AILoop());
-            SetState(EnemyState.Idle);
+
+            currentState = EnemyState.Idle;
         }
         
-        private int CalculateHP(int day)
-        {
-            return Mathf.RoundToInt(enemyData.baseHP * (1f + 0.1f * (day - 1)));
-        }
-        private void SetState(EnemyState newState)
-        {
-            if (currentState == newState) return;
-            currentState = newState;
-            // 可以在这里处理进入/退出状态的逻辑
-        }
         private IEnumerator AILoop()
         {
             while (currentState != EnemyState.Dead)
@@ -145,17 +124,16 @@ namespace Components.Enemies
                     
                     if (distance <= attackRange)
                     {
-                        SetState(EnemyState.Attacking);
+                        currentState = EnemyState.Attacking;
                     }
-                    else
+                    else if (!isAttacking) 
                     {
-                        SetState(EnemyState.Moving);
-                        //UpdatePath(); // 只有在需要移动时才更新路径
+                        currentState = EnemyState.Moving;
                     }
                 }
                 else
                 {
-                    SetState(EnemyState.Idle);
+                    currentState = EnemyState.Idle;
                 }
             }
         }
@@ -181,7 +159,6 @@ namespace Components.Enemies
                     break;
             }
             
-            UpdateAnimation();
         }
         
         public void ApplyStatusEffect(StatusEffect newEffect)
@@ -215,7 +192,6 @@ namespace Components.Enemies
         {
             if (statusEffects.Count == 0) return;
 
-            // 不能在遍历字典时修改它，所以先收集要移除的Key
             List<Type> effectsToRemove = new List<Type>();
             foreach (var kvp in statusEffects)
             {
@@ -231,7 +207,7 @@ namespace Components.Enemies
             {
                 if (statusEffects.TryGetValue(type, out StatusEffect effect))
                 {
-                    effect.Remove(this); // 调用Remove来触发重算
+                    effect.Remove(this);
                     statusEffects.Remove(type);
                 }
             }
@@ -240,29 +216,28 @@ namespace Components.Enemies
         public void RecalculateStats()
         {
             // --- 数值计算 ---
+            float speedMultiplier = 1f; // 用于跟踪总的速度倍率
             currentSpeed = enemyData.baseSpeed;
-
-            // --- 视觉效果重置 ---
+    
             bool isSlowed = false;
-        
+
             // 遍历所有当前激活的效果
             foreach (var effect in statusEffects.Values)
             {
                 if (effect is SlowEffect slow)
                 {
-                    currentSpeed *= slow.slowMultiplier;
+                    float effectMultiplier = slow.slowMultiplier;
+                    currentSpeed *= effectMultiplier;
+                    speedMultiplier *= effectMultiplier; // 累积速度倍率
                     isSlowed = true;
                 }
-                // else if (effect is SpeedUpEffect haste) { ... }
-                // ... 可以扩展其他效果 ...
             }
-
-            // --- 应用视觉效果 ---
-            // 这样可以正确处理多个减速效果：只要身上有任何一个减速，就变蓝
-            if (spriteRenderer != null)
+    
+            spriteRenderer.color = isSlowed ? new Color(0.3f, 0.3f, 1f) : Color.white;
+    
+            if (animator != null)
             {
-                spriteRenderer.color = isSlowed ? new Color(0.2f, 0.2f, 1f) : Color.white;
-                //spriteRenderer.color = new Color(0.3f, 0.8f, 1f);
+                animator.speed = speedMultiplier;
             }
         }
 
@@ -275,91 +250,27 @@ namespace Components.Enemies
                 {
                     currentPathIndex = 0;
                     ReleaseGrid();
-
                 }
             }
         }
 
         void ReleaseGrid()
         {
-            if (isOccupyingGrid)
+            if (occupiedPosition.HasValue)
             {
-                isOccupyingGrid = false;
-                EventManager.OnGridRelease?.Invoke(transform.position);
+                EventManager.OnGridRelease?.Invoke(occupiedPosition.Value);
+                occupiedPosition = null;
             }
         }
         
-        /// <summary>
-        /// 寻找最近的目标
-        /// </summary>
-        /*private BuildingComponent FindNearestTarget()
-        {
-            var allBuildings = BuildingManager.Instance.AllBuildings;
-            if (allBuildings == null || allBuildings.Count == 0) return null;
-            
-            BuildingComponent nearestBuilding = null;
-            float shortestPathCost = float.MaxValue;
-            foreach (var building in allBuildings)
-            {
-                if(building.Data.BuildingType == BuildingType.DefenseCrystal) continue; //先找非DefenseCrystal建筑
-                PathfindingNode endNode;
-                var path  = GridManager.Instance.FindPath(transform.position, building.transform.position, out endNode);
-                
-                if (endNode != null)
-                {
-                    if (endNode.gCost < shortestPathCost)
-                    {
-                        shortestPathCost = endNode.gCost;
-                        nearestBuilding = building;
-                        currentPath = path;
-                    }
-                }
-            }
-            if (nearestBuilding != null)
-            {
-                return nearestBuilding;
-            }
-            foreach (var building in allBuildings)
-            {
-                if (building.Data.BuildingType == BuildingType.DefenseCrystal) //只找DefenseCrystal建筑
-                {
-                    PathfindingNode endNode;
-                    var path  = GridManager.Instance.FindPath(transform.position, building.transform.position, out endNode);
-                
-                    if (endNode != null)
-                    {
-                        if (endNode.gCost < shortestPathCost)
-                        {
-                            shortestPathCost = endNode.gCost;
-                            nearestBuilding = building;
-                            currentPath = path;
-                        }
-                    }
-                }
-            }
-            return nearestBuilding;
-        }*/
-        
-        /*private void UpdatePath()
-        {
-            if (currentTarget == null) return;
-            
-            PathfindingNode endNode;
-            List<Vector3> path = GridManager.Instance.FindPath(transform.position, currentTarget.transform.position, out endNode, true);
-            if(endNode != null)
-            {
-                currentPath = path;
-                currentPathIndex = 0;
-            }
-            else
-            {
-                currentPath = null;
-            }
-        }*/
-        
         private void MoveAlongPath()
         {
-            if (currentPath == null || currentPathIndex >= currentPath.Count || currentTarget==null) return;
+            if (currentPath == null || currentPathIndex >= currentPath.Count || currentTarget == null)
+            {
+                return;
+            }
+            
+            SetMovingAnimation(true);
             
             // 判断是否和路径的第一个点在同一个格子
             if (currentPathIndex == 0)
@@ -373,9 +284,9 @@ namespace Components.Enemies
             
             Vector3 targetPos = currentPath[currentPathIndex];
 
-            if (!isOccupyingGrid && currentPathIndex == currentPath.Count - 1)
+            if (occupiedPosition == null && currentPathIndex == currentPath.Count - 1)
             {
-                isOccupyingGrid = true;
+                occupiedPosition = targetPos;
                 EventManager.OnEnemyStayed?.Invoke(targetPos);
             }
             
@@ -385,17 +296,7 @@ namespace Components.Enemies
             
             transform.position += moveDirection * currentSpeed * Time.deltaTime;
             
-            if (moveDirection.x != 0)
-            {
-                //spriteRenderer.flipX = moveDirection.x < 0;
-                if (currentTarget != null)
-                {
-                    Vector3 overallDirection = (currentTarget.transform.position - transform.position).normalized;
-                    if (overallDirection.x > 0.1f) spriteRenderer.flipX = true;
-                    else if (overallDirection.x < -0.1f) spriteRenderer.flipX = false;
-                }
-            }
-            
+            spriteRenderer.flipX = transform.position.x > currentTarget.transform.position.x;
             
             if (Vector3.Distance(transform.position, targetPos) < 0.1f)
             {
@@ -411,8 +312,6 @@ namespace Components.Enemies
             
             foreach (var collider in nearbyColliders)
             {
-                if (collider.gameObject == gameObject) continue;
-                
                 Vector3 diff = transform.position - collider.transform.position;
                 if (diff.magnitude > 0)
                 {
@@ -424,31 +323,35 @@ namespace Components.Enemies
             if (count > 0)
             {
                 force /= count;
-                force *= this.separationForce; 
+                force *= separationForce; 
             }
             return force;
         }
         private void TryAttack()
         {
-            if (currentTarget == null || attackCooldown > 0 || isAttacking) return;
-            
-            if (Vector2.Distance(transform.position, currentTarget.transform.position) > attackRange)
+            if (attackCooldown > 0 || isAttacking || currentTarget == null)
             {
-                SetState(EnemyState.Moving);
                 return;
             }
             
+            SetMovingAnimation(false);
+            
+            if (Vector2.Distance(transform.position, currentTarget.transform.position) > attackRange)
+            {
+                currentState = EnemyState.Moving;
+                return;
+            }
+            isAttacking = true;
             StartCoroutine(AttackCoroutine());
         }
         private IEnumerator AttackCoroutine()
         {
-            isAttacking = true;
             attackCooldown = attackCooldownTime;
             
             Vector3 originalPos = transform.position;
             Vector3 targetPos = currentTarget.transform.position;
-            //Vector3 attackPos = originalPos + (targetPos - originalPos).normalized * 0.5f;
-            Vector3 attackPos = targetPos;
+            Vector3 attackPos = originalPos + (targetPos - originalPos) * 0.8f;
+            //Vector3 attackPos = targetPos;
             
             float attackAnimTime = 0.1f;
             float timer = 0;
@@ -485,50 +388,34 @@ namespace Components.Enemies
             isAttacking = false;
         }
         
-        public void ApplySlow(float duration = 2f, float slowAmount = 0.5f)
-        {
-            slowTimer = duration;
-            currentSpeed = enemyData.baseSpeed * (1f - slowAmount);
-        }
-        
         private void OnTakeDamage(int damage)
         {
-            FloatingTextManager.Instance.ShowDamage(damage, transform.position, false);
+            FloatingTextManager.Instance.ShowDamage(damage, center.position, false);
             StartCoroutine(DamageFlash());
         }
         
         IEnumerator DamageFlash()
         {
             spriteRenderer. material.SetColor(FlashColorID, Color.red);
-            // 设置为完全闪白
             spriteRenderer. material.SetFloat(FlashAmountID, 1f);
-            // 等待指定的持续时间
-            yield return new WaitForSeconds(0.1f);
-            // 恢复正常
+            yield return new WaitForSeconds(0.15f);
             spriteRenderer.material.SetFloat(FlashAmountID, 0f);
-            
-            /*// 设置为完全闪白
-            spriteRenderer.color = Color.red;
-            // 等待指定的持续时间
-            yield return new WaitForSeconds(0.1f);
-            // 恢复正常
-            spriteRenderer.color = Color.white;*/
         }
         
         private void OnEnemyDeath()
         {
             if (currentState == EnemyState.Dead) return; // 防止重复调用
-            SetState(EnemyState.Dead);
+            currentState = EnemyState.Dead;
             
             if (enemyData.deathEffectPrefab != null)
             {
                 Destroy(Instantiate(enemyData.deathEffectPrefab, transform.position, Quaternion.identity), 0.5f);
             }
             
-            // 延迟一帧销毁，以防其他对象在本帧还需要引用它
-            Destroy(gameObject);
-            EventManager.OnEnemyDeath?.Invoke(this);
             ReleaseGrid();
+            EventManager.OnEnemyDeath?.Invoke(this);
+            Destroy(gameObject);
+            
         }
         
         private void OnDayStart(int day)
@@ -536,19 +423,9 @@ namespace Components.Enemies
             OnEnemyDeath(); // 内部防止重复调用
         }
         
-        private void UpdateAnimation()
+        private void SetMovingAnimation(bool isMoving)
         {
-            if (animator != null)
-            {
-                animator.SetBool("IsMoving", currentState == EnemyState.Moving);
-                //animator.SetBool("IsAttacking", isAttacking);
-            }
-            else if (spriteRenderer != null) // Fallback to manual sprite swap
-            {
-                spriteRenderer.sprite = (currentState == EnemyState.Moving && enemyData.moveSprite != null) 
-                    ? enemyData.moveSprite 
-                    : enemyData.idleSprite;
-            }
+            animator.SetBool("IsMoving", isMoving);
         }
         
         public void InstantKill()
@@ -556,9 +433,9 @@ namespace Components.Enemies
             OnEnemyDeath();
         }
 
-        void OnCellBecomeObstacle(Vector3 pos)
+        void OnCellBecameObstacle(Vector3 pos)
         {
-            if(currentPath == null || isOccupyingGrid) return;
+            if(currentPath == null || occupiedPosition!=null) return;
             if (currentPath.Contains(pos))
             {
                 currentTarget = null;
@@ -573,6 +450,15 @@ namespace Components.Enemies
             
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(transform.position, attackRange);
+            
+            Gizmos.color = Color.green;
+            if (currentPath != null)
+            {
+                for (var i = 0; i < currentPath.Count; i++)
+                {
+                    Gizmos.DrawSphere(currentPath[i], 0.25f);
+                }
+            }
         }
     }
 }

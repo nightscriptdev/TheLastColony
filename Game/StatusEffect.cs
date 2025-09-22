@@ -7,7 +7,6 @@ namespace Game
         public float duration;
         public float remainingTime;
     
-        // 建议增加构造函数
         public StatusEffect(float duration)
         {
             this.duration = duration;

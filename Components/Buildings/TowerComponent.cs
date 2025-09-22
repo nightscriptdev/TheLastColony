@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Components.Enemies;
 using Data.Buildings;
 using Enums;
 using Interface;
@@ -83,24 +84,24 @@ namespace Components.Buildings
 
         private void AttackNearestEnemy()
         {
-            Transform target = EnemyManager.Instance.GetNearestEnemy(transform.position);
-            if (target == null) return;
+            EnemyComponent enemy = EnemyManager.Instance.GetNearestEnemy(transform.position);
+            if (enemy == null) return;
             var levelData = buildingComponent.LevelData;
-            if (Vector2.Distance(target.position, transform.position) > levelData.AttackRange) return;
+            if (Vector2.Distance(enemy.center.position, transform.position) > levelData.AttackRange) return;
             int damage = buildingComponent.Data.GetRandomDamage(buildingComponent.Level);
             switch (levelData.AttackType)
             {
                 case TowerAttackType.Single:
-                    SingleTargetAttack(target, damage, levelData);
+                    SingleTargetAttack(enemy.center, damage, levelData);
                     break;
                 case TowerAttackType.Scatter:
-                    ScatterAttack(target, damage, levelData);
+                    ScatterAttack(enemy.center, damage, levelData);
                     break;
                 case TowerAttackType.Piercing:
-                    PiercingAttack(target, damage, levelData);
+                    PiercingAttack(enemy.center, damage, levelData);
                     break;
                 case TowerAttackType.Area:
-                    BeamAttack(target, damage, levelData);
+                    BeamAttack(enemy.center, damage, levelData);
                     break;
             }
         }
@@ -249,20 +250,19 @@ namespace Components.Buildings
 
         public string GetInfoText()
         {
-            string info = $"伤害: {buildingComponent.LevelData.MinDamage}-{buildingComponent.LevelData.MaxDamage}\n";
-            info += $"攻速: {buildingComponent.LevelData.AttackInterval} 秒/次\n";
-            info += $"射程: {buildingComponent.LevelData.AttackRange}\n";
-            
-            
+            var loc = LocalizationManager.Instance;
+            string info = $"{loc.GetGameText("combat.damage")} {buildingComponent.LevelData.MinDamage}-{buildingComponent.LevelData.MaxDamage}\n";
+            info += $"{loc.GetGameText("combat.range", buildingComponent.LevelData.AttackRange)}\n";
+            info += $"{loc.GetGameText("combat.attack_speed", buildingComponent.LevelData.AttackInterval)}\n";
             var effects = new List<string>();
             if (buildingComponent.LevelData.HasSlowEffect)
-                effects.Add("附带减速效果");
+                effects.Add(loc.GetGameText("combat.effect.slow"));
             if (buildingComponent.LevelData.PierceCount > 1)
-                effects.Add($"穿透{buildingComponent.LevelData.PierceCount}个敌人");
+                effects.Add(loc.GetGameText("combat.effect.pierce", buildingComponent.LevelData.PierceCount));
             if (buildingComponent.LevelData.MultiShotCount > 1)
-                effects.Add($"发射{buildingComponent.LevelData.MultiShotCount}发子弹");
+                effects.Add(loc.GetGameText("combat.effect.multishot", buildingComponent.LevelData.MultiShotCount));
             if (buildingComponent.LevelData.ConsecutiveAttacks > 1)
-                effects.Add($"连续攻击{buildingComponent.LevelData.ConsecutiveAttacks}次");
+                effects.Add(loc.GetGameText("combat.effect.consecutive", buildingComponent.LevelData.ConsecutiveAttacks));
 
             return info + (effects.Count > 0 ? "\n" + string.Join("\n", effects) : "");
         }

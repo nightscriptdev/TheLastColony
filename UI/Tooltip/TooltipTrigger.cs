@@ -27,13 +27,17 @@ namespace UI.Tooltip
         public virtual void OnPointerExit(PointerEventData eventData)
         {
             if (TooltipManager.Instance != null)
+            {
                 TooltipManager.Instance.Hide();
+            }
         }
 
         protected virtual void OnDisable()
         {
             if (TooltipManager.Instance != null)
+            {
                 TooltipManager.Instance.Hide();
+            }
         }
 
         public virtual string GetTooltip()

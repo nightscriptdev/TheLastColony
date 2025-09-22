@@ -107,7 +107,7 @@ namespace Managers
             currentSelectedSkill = skillData;
             isInSkillCastMode = true;
             
-            Cursor.SetCursor(skillCursor, new Vector2(13, 13), CursorMode.Auto);
+            Cursor.SetCursor(skillCursor, new Vector2(12.5f, 0), CursorMode.Auto);
             
         }
 

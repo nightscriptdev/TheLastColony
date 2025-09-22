@@ -11,7 +11,7 @@ namespace Components
     {
         [Header("移动设置")]
         [SerializeField] private float speed = 10f;
-        [SerializeField] private float lifetime = 5f;
+        [SerializeField] private float lifetime = 2f;
         [Header("视觉效果")]
         [SerializeField] private GameObject impactEffect;
         private Transform target;

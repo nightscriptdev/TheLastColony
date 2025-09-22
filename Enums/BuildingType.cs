@@ -11,7 +11,7 @@
         ResearchLab,
         PurpleCrystalTower,
         BlueCrystalTower,
-        WhiteCrystalTower,
+        YellowCrystalTower,
         DefenseCrystal
     }
 }

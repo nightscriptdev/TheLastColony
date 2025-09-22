@@ -116,7 +116,7 @@ namespace Core.Pathfinding
             
             while (currentNode != null)
             {
-                Vector3 worldPos = GridManager.Instance.GridToWorldCenter(
+                Vector3 worldPos = GridManager.Instance.GridToWorldBottomCenter(
                     currentNode.gridPosition.x, currentNode.gridPosition.y);
                 path.Add(worldPos);
                 currentNode = currentNode.parent;

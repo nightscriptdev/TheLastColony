@@ -1,5 +1,10 @@
+using Components.Enemies;
 using Core;
+using Managers;
+using TMPro;
 using UnityEngine;
+using UnityEngine.Localization;
+using UnityEngine.Localization.Settings;
 using UnityEngine.UI;
 
 namespace UI
@@ -18,12 +23,15 @@ namespace UI
 
         [SerializeField] private ResourceUI resourceUI;
         [SerializeField] private DayNightCycleUI dayNightUI;
+        [SerializeField] private TextMeshProUGUI dayText;
+        [SerializeField] private TextMeshProUGUI dayNightText;
+        [SerializeField] private TextMeshProUGUI killsText;
         
         
         [SerializeField] private Button btnShowBuildingConstructionUI;
         [SerializeField] private Button btnShowSkillUI;
         
-        [SerializeField] private Color activeTabColor = Color.green;
+        [SerializeField] private Color activeTabColor = Color.yellow;
         [SerializeField] private Color inactiveTabColor = Color.white;
         private void OnEnable()
         {
@@ -32,6 +40,11 @@ namespace UI
             EventManager.OnGameEnd += OnGameEnd;
             EventManager.OnGamePause += OnGamePause;
             EventManager.OnGameResume += OnGameResume;
+            EventManager.OnDayStart += UpdateDayUI;
+            EventManager.OnNightStart += UpdateNightTimeUI;
+            EventManager.OnEnemyDeath += OnEnemyDeath;
+            
+            LocalizationSettings.SelectedLocaleChanged += OnSelectedLocaleChanged;
         }
 
         private void OnDisable()
@@ -41,6 +54,11 @@ namespace UI
             EventManager.OnGameEnd -= OnGameEnd;
             EventManager.OnGamePause -= OnGamePause;
             EventManager.OnGameResume -= OnGameResume;
+            EventManager.OnDayStart -= UpdateDayUI;
+            EventManager.OnNightStart -= UpdateNightTimeUI;
+            EventManager.OnEnemyDeath -= OnEnemyDeath;
+
+            LocalizationSettings.SelectedLocaleChanged -= OnSelectedLocaleChanged;
         }
 
         private void Start()
@@ -128,6 +146,33 @@ namespace UI
             {
                 gameManager.ResumeGame();
             }
+        }
+        
+        private void UpdateDayUI(int day)
+        {
+            dayText.text = LocalizationManager.Instance.GetGameText("resource.day", day);
+            UpdateDayTimeUI();
+        }
+        private void UpdateDayTimeUI()
+        {
+            dayNightText.text = LocalizationManager.Instance.GetUIText("ui.daytime");
+        }
+        private void UpdateNightTimeUI(int day = 1)
+        {
+            dayNightText.text = LocalizationManager.Instance.GetUIText("ui.nighttime");
+        }
+        private void OnSelectedLocaleChanged(Locale locale)
+        {
+            dayText.text = LocalizationManager.Instance.GetGameText("resource.day", GameManager.Instance.CurrentDay);
+            if(TimeManager.Instance.IsDay)
+                UpdateDayTimeUI();
+            else
+                UpdateNightTimeUI();
+        }
+        
+        private void OnEnemyDeath(EnemyComponent enemyComponent)
+        {
+            killsText.text = ++GameManager.Instance.KillCount +"";
         }
 
         /// <summary>

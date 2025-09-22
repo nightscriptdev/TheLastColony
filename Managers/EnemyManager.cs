@@ -27,9 +27,9 @@ namespace Managers
             Enemies.Remove(enemyComponent);
         }
 
-        public Transform GetNearestEnemy(Vector2 originPosition)
+        public EnemyComponent GetNearestEnemy(Vector2 originPosition)
         {
-            Transform nearest = null;
+            EnemyComponent nearest = null;
             float nearestDistance = float.MaxValue;
             
             foreach (var enemy in Enemies)
@@ -38,7 +38,7 @@ namespace Managers
                 if (distance < nearestDistance)
                 {
                     nearestDistance = distance;
-                    nearest = enemy.transform;
+                    nearest = enemy;
                 }
             }
 

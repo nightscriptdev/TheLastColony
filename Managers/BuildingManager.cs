@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using Data.Buildings;
 using Components.Buildings;
-using Components.Enemies;
 using Core;
 using Core.Grid;
 using Enums;
@@ -42,12 +41,14 @@ namespace Managers
         private void OnEnable()
         {
             EventManager.OnGameStart += OnGameStart;
+            EventManager.OnNightStart += OnNightStart;
             EventManager.OnBuildingButtonClick += StartBuildingMode;
         }
 
         private void OnDisable()
         {
             EventManager.OnGameStart -= OnGameStart;
+            EventManager.OnNightStart += OnNightStart;
             EventManager.OnBuildingButtonClick -= StartBuildingMode;
         }
 
@@ -89,13 +90,13 @@ namespace Managers
             var buildingData = GetBuildingData(buildingType);
             if (buildingData == null)
             {
-                Debug.LogError($"找不到建筑类型 {buildingType} 的数据！");
                 return;
             }
 
             currentBuildingData = buildingData;
             isBuildingMode = true;
             CreateBuildingPreview();
+            Cursor.visible = false;
         }
 
         /// <summary>
@@ -103,6 +104,7 @@ namespace Managers
         /// </summary>
         public void EndBuildingMode()
         {
+            Cursor.visible = true;
             isBuildingMode = false;
             currentBuildingData = null;
             
@@ -139,7 +141,7 @@ namespace Managers
             // 更新预览位置
             if (buildingPreview != null)
             {
-                buildingPreview.transform.position =  GridManager.Instance.GridToWorldCenter(gridPos.x, gridPos.y);
+                buildingPreview.transform.position =  GridManager.Instance.GridToWorldBottomCenter(gridPos.x, gridPos.y);
                 
                 // 根据是否可建造改变颜色
                 bool canBuild = gridManager.CanBuildAt(buildingPreview.transform.position) && ResourceManager.Instance.HasEnoughGold(currentBuildingData.BuildCost);
@@ -258,6 +260,11 @@ namespace Managers
             return buildingDatabase?.GetBuildingData(buildingType);
         }
 
+        void OnNightStart(int day)
+        {
+            EndBuildingMode();
+        }
+        
         public bool IsBuildingMode => isBuildingMode;
         public List<BuildingComponent> AllBuildings => allBuildings;
     }

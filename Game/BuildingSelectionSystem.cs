@@ -17,15 +17,12 @@ namespace Game
         [SerializeField] private Vector2 padding = new Vector2(10f, 10f);
 
         [SerializeField] private GameObject selectionIndicator;
-        [SerializeField] private Color selectedColor = Color.yellow;
         
         [SerializeField] private BuildingInfoPanel buildingInfoPanel;
         [SerializeField] private RectTransform panelRectTransform;
 
         private BuildingComponent selectedBuilding;
         private Collider2D lastHoveredCollider2D = null; // 记录上一帧悬停的
-        private SpriteRenderer selectedBuildingRenderer;
-        private Color originalColor;
 
         private void Awake()
         {
@@ -38,9 +35,6 @@ namespace Game
             HandleInput();
         }
 
-        /// <summary>
-        /// 处理输入
-        /// </summary>
         private void HandleInput()
         {
             Vector3 worldPos = gameCamera.ScreenToWorldPoint(Input.mousePosition);
@@ -116,6 +110,7 @@ namespace Game
 
             // 选择新建筑
             selectedBuilding = building;
+            selectedBuilding.OnBuildingDestroyed += OnBuildingDestroyed;
             
             // 设置视觉效果
             SetBuildingSelectedVisual(true);
@@ -126,10 +121,13 @@ namespace Game
                 //PositionBuildingInfoPanel(building.transform.position);
                 buildingInfoPanel.Show(building);
             }
-            
-            Debug.Log($"选择建筑: {building.Data.BuildingName}");
         }
 
+        void OnBuildingDestroyed(BuildingComponent building)
+        {
+            DeselectBuilding();
+        }
+        
         /// <summary>
         /// 取消选择建筑
         /// </summary>
@@ -137,14 +135,11 @@ namespace Game
         {
             if (selectedBuilding != null)
             {
-                // 恢复视觉效果
                 SetBuildingSelectedVisual(false);
-                
+                selectedBuilding.OnBuildingDestroyed -= OnBuildingDestroyed;
                 selectedBuilding = null;
-                selectedBuildingRenderer = null;
             }
 
-            // 隐藏建筑信息面板
             if (buildingInfoPanel != null)
             {
                 buildingInfoPanel.Hide();
@@ -158,29 +153,13 @@ namespace Game
         {
             if (selectedBuilding == null) return;
 
-            // 获取建筑的SpriteRenderer
-            if (selectedBuildingRenderer == null)
-            {
-                selectedBuildingRenderer = selectedBuilding.GetComponent<SpriteRenderer>();
-            }
-
-            if (selectedBuildingRenderer != null)
-            {
-                if (selected)
-                {
-                }
-                else
-                {
-                }
-            }
-
             // 显示/隐藏选择指示器
             if (selectionIndicator != null)
             {
                 if (selected)
                 {
                     selectionIndicator.SetActive(true);
-                    selectionIndicator.transform.position = selectedBuilding.transform.position;
+                    selectionIndicator.transform.position = selectedBuilding.transform.position + Vector3.up;
                 }
                 else
                 {

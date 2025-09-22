@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Components.Buildings;
 using Components.Enemies;
@@ -162,7 +163,7 @@ namespace Core.Grid
             {
                 gridArray[x, y] = state;
                 if(state != CellState.Walkable)
-                    EventManager.OnCellBecomeObstacle?.Invoke(GridToWorldCenter(x, y));
+                    EventManager.OnCellBecomeObstacle?.Invoke(GridToWorldBottomCenter(x, y));
             }
         }
         
@@ -191,11 +192,11 @@ namespace Core.Grid
         }
         
         /// <summary>
-        /// 网格坐标转换为世界坐标（中心点）
+        /// 网格坐标转换为世界坐标（底部中心）
         /// </summary>
-        public Vector3 GridToWorldCenter(int x, int y)
+        public Vector3 GridToWorldBottomCenter(int x, int y)
         {
-            return origin + new Vector3((x + 0.5f) * cellSize.x, (y + 0.5f) * cellSize.y, 0);
+            return origin + new Vector3((x + 0.5f) * cellSize.x, y * cellSize.y, 0);
         }
         
         /// <summary>
@@ -289,7 +290,8 @@ namespace Core.Grid
             }
             
             targetBuilding = closestTargetBuilding;
-            Debug.Log(enemy.name, enemy.gameObject);
+            if(targetBuilding == null)
+                Debug.LogError($"target NUll [{GridToWorldBottomCenter(closestNode.gridPosition.x, closestNode.gridPosition.y)}]: "+enemy.name, enemy.gameObject);
             return pathfinder.RetracePath(closestNode);
             
             bool FindBestTargetGrid()
@@ -459,9 +461,23 @@ namespace Core.Grid
                     CellState state = GetCellState(x, y);
                     if (state != CellState.Walkable)
                     {
-                        Gizmos.color = state == CellState.TerrainObstacle ? Color.red : Color.blue;
-                        Vector3 center = GridToWorldCenter(x, y);
-                        Gizmos.DrawCube(center, new Vector3(cellSize.x * 0.8f, cellSize.y * 0.8f, 0.1f));
+                        switch (state)
+                        {
+                            case CellState.TerrainObstacle:
+                                Gizmos.color = Color.red;
+                                break;
+                            case CellState.BuildingObstacle:
+                                Gizmos.color = Color.blue;
+                                break;
+                            case CellState.EnemyObstacle:
+                                Gizmos.color = Color.yellow;
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException();
+                        }
+
+                        Vector3 center = GridToWorldBottomCenter(x, y);
+                        Gizmos.DrawCube(center, new Vector3(cellSize.x * 0.5f, cellSize.y * 0.5f, 0.1f));
                     }
                 }
             }

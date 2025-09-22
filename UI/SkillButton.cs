@@ -100,10 +100,15 @@ namespace UI
         {
             string tooltip = String.Empty;
 
+            if (!HasEnoughKnowledge())
+            {
+                tooltip += $"<color=red>{LocalizationManager.Instance.GetGameText("tooltip.knowledge.insufficient")}</color>\n";
+            }
+            
             if (ResearchManager.Instance.IsSkillUnlocked(skillData.skillType))
                 tooltip += skillData.GetTooltip();
             else
-                tooltip += $"<color=red>需要研究[{skillData.skillName}]</color>";
+                tooltip += $"<color=red>{LocalizationManager.Instance.GetGameText("tooltip.research_required")} [{skillData.GetLocalizedName()}]</color>";
             
             return tooltip;
         }

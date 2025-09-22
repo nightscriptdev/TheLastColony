@@ -88,7 +88,7 @@ namespace Components.Buildings
         {
             if (FloatingTextManager.Instance == null) return;
             
-            Vector3 floatingTextPosition = transform.position + Vector3.up * 0.5f;
+            Vector3 floatingTextPosition = transform.position + new Vector3(0, 0.7f, 0);
             FloatingTextManager.Instance.ShowResourceProduction(text, floatingTextPosition);
         }
         
@@ -111,7 +111,7 @@ namespace Components.Buildings
 
         public string GetInfoText()
         {
-            return buildingComponent.Data.Description + "\n产量: " + ResourceManager.Instance.CalculateFinalProduction(buildingComponent.LevelData.BaseProduction) + $"/{buildingComponent.Data.ProductionInterval}秒\n只在白天产出";
+            return LocalizationManager.Instance.GetLocalizedBuildingDescription(buildingComponent.Data.BuildingType) + "\n" + LocalizationManager.Instance.GetGameText("building.production", buildingComponent.LevelData.BaseProduction, buildingComponent.Data.ProductionInterval)+"\n" + LocalizationManager.Instance.GetGameText("building.daytime_only");
         }
     }
 }

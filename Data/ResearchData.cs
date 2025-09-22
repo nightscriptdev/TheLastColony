@@ -1,4 +1,6 @@
-﻿using Enums;
+﻿using System;
+using Enums;
+using Managers;
 using UnityEngine;
 
 namespace Data
@@ -7,8 +9,8 @@ namespace Data
     public class ResearchData : ScriptableObject
     {
         [Header("基本信息")]
-        public string researchName;
-        public string description;
+        //public string researchName;
+        //public string description;
         public Sprite icon;
         public int knowledgeCost;
         public ResearchType type;
@@ -21,5 +23,18 @@ namespace Data
     
         [Header("前置条件")]
         public ResearchData prerequisite;
+        
+        public string GetLocalizedResearchName()
+        {
+            switch (type)
+            {
+                case ResearchType.Building:
+                    return $"{LocalizationManager.Instance.GetGameText("tooltip.building.level", unlockBuildingLevel)}{LocalizationManager.Instance.GetLocalizedBuildingName(unlockBuildingType)}";
+                case ResearchType.Skill:
+                    return LocalizationManager.Instance.GetLocalizedSkillName(unlockSkill);
+                default:
+                    return "";
+            }
+        }
     }
 }

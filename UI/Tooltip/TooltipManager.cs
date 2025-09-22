@@ -39,35 +39,17 @@ namespace UI
         public void Show(string content)
         {
             if (string.IsNullOrEmpty(content)) return;
-            if (showCoroutine != null)
-            {
-                StopCoroutine(showCoroutine);
-            }
-            if(showDelay >0)
-                showCoroutine = StartCoroutine(ShowTooltipAfterDelay(content, showDelay));
-            else
-                ShowTooltip(content);
+            ShowTooltip(content);
         }
 
         public void Hide()
         {
-            if (showCoroutine != null)
-            {
-                StopCoroutine(showCoroutine);
-                showCoroutine = null;
-            }
             if (tooltip != null && tooltip.activeSelf)
             {
                 tooltip.SetActive(false);
             }
         }
         
-        private IEnumerator ShowTooltipAfterDelay(string content, float delay)
-        {
-            yield return new WaitForSecondsRealtime(delay);
-            ShowTooltip(content);
-            showCoroutine = null;
-        }
 
         private void ShowTooltip(string content)
         {

@@ -273,7 +273,7 @@ namespace Game
             // 生成敌人
             if (enemyToSpawn.enemyPrefab != null)
             {
-                GameObject enemyGO = Instantiate(enemyToSpawn.enemyPrefab, spawnPosition, Quaternion.identity);
+                GameObject enemyGO = Instantiate(enemyToSpawn.enemyPrefab, spawnPosition, Quaternion.identity, transform);
                 EnemyComponent enemy = enemyGO.GetComponent<EnemyComponent>();
                 enemy.Initialize(enemyToSpawn, currentDay);
                 EnemyManager.Instance.Enemies.Add(enemy);

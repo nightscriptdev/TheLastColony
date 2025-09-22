@@ -158,7 +158,6 @@ namespace Managers
         
         void OnResearchCompleted(ResearchData research)
         {
-            Debug.Log($"研究完成: {research.researchName}");
             
             // 这里可以添加研究完成的音效、UI提示等
             // AudioManager.Instance.PlaySFX("research_complete");

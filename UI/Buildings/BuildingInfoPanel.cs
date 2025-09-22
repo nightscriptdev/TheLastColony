@@ -1,5 +1,4 @@
-﻿using System;
-using Components;
+﻿using Components;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -10,6 +9,8 @@ using Data.Buildings;
 using Enums;
 using Managers;
 using UI.Tooltip;
+using UnityEngine.Localization;
+using UnityEngine.Localization.Settings;
 
 namespace UI.Buildings
 {
@@ -46,16 +47,16 @@ namespace UI.Buildings
             Hide();
         }
 
-        private void Update()
+        /*private void Update()
         {
-            UpdateBuildingInfo();
-        }
+        }*/
 
         public void Show(BuildingComponent building)
         {
             EventManager.OnGoldChanged += OnGoldChanged;
             EventManager.OnResearchComplete += OnResearchComplete;
-            
+            LocalizationSettings.SelectedLocaleChanged += OnSelectedLocaleChanged;
+
             
             currentBuilding = building;
             currentHealthComponent = currentBuilding.GetComponent<HealthComponent>();
@@ -63,16 +64,16 @@ namespace UI.Buildings
             healthText.text = $"{currentHealthComponent.CurrentHP}/{currentHealthComponent.MaxHP}";
             currentHealthComponent.OnDeath += Hide;
             currentHealthComponent.OnHealthChanged += UpdateHealBar;
-            buildingNameText.text = currentBuilding.Data.BuildingName;
 
             UpdateBuildingInfo();
             UpdateButtonStates();
             panelRoot.SetActive(true);
         }
-        public void Hide()
+        public void OnDisable()
         {
             EventManager.OnGoldChanged -= OnGoldChanged;
             EventManager.OnResearchComplete -= OnResearchComplete;
+            LocalizationSettings.SelectedLocaleChanged -= OnSelectedLocaleChanged;
 
             
             currentBuilding = null;
@@ -84,9 +85,18 @@ namespace UI.Buildings
             }
 
             healthBar.StopAllCoroutines();
-            panelRoot.SetActive(false);
         }
 
+        void OnSelectedLocaleChanged(Locale locale)
+        {
+            UpdateBuildingInfo();
+        }
+        
+        public void Hide()
+        {
+            panelRoot.SetActive(false);
+        }
+        
         private void UpdateHealBar(int currentHealth, int maxHealth)
         {
             healthText.text = $"{currentHealth}/{maxHealth}";
@@ -95,12 +105,15 @@ namespace UI.Buildings
 
         private void UpdateBuildingInfo()
         {
+            buildingNameText.text = LocalizationManager.Instance.GetLocalizedBuildingName(currentBuilding.Data.BuildingType);
             buildingInfoText.text = currentBuilding.GetInfoText();
         }
 
         private void UpdateButtonStates()
         {
-            buildingLevelText.text = "等级\n" + (currentBuilding.Level);
+            var loc = LocalizationManager.Instance;
+            
+            buildingLevelText.text = currentBuilding.Level.ToString();
             
             if (currentBuilding.HasNextLevel)
             {
@@ -108,19 +121,19 @@ namespace UI.Buildings
 
                 if (!ResearchManager.Instance.IsBuildingUnlocked(new BuildingKey(currentBuilding.Data.BuildingType, currentBuilding.Level+1)))
                 {
-                    upgradeTooltipTrigger.customTooltip = "<color=red>尚未研究</color>";
+                    upgradeTooltipTrigger.customTooltip = $"<color=red>{loc.GetGameText("tooltip.research_required")} [{loc.GetGameText("tooltip.building.level", currentBuilding.Level+1)}{loc.GetLocalizedBuildingName(currentBuilding.Data.BuildingType)}]</color>";
                     upgradeButton.interactable = false;
                     return;
                 }
                 if (!currentBuilding.IsUpgradeable)
                 {
-                    upgradeTooltipTrigger.customTooltip = "<color=red>需要满血</color>";
+                    upgradeTooltipTrigger.customTooltip = $"<color=red>{loc.GetGameText("tooltip.research_required")}</color>";
                     upgradeButton.interactable = false;
                     return;
                 }
                 if (ResourceManager.Instance.Gold < currentBuilding.LevelData.UpgradeCost)
                 {
-                    upgradeTooltipTrigger.customTooltip = "<color=red>金币不足</color>";
+                    upgradeTooltipTrigger.customTooltip = $"<color=red>{loc.GetGameText("building.insufficient_gold")}</color>";
                     upgradeButton.interactable = false;
                     return;
                 }
@@ -136,11 +149,13 @@ namespace UI.Buildings
 
         void OnGoldChanged(int currentGold)
         {
+            UpdateBuildingInfo();
             UpdateButtonStates();
         }
 
         void OnResearchComplete(ResearchData researchData)
         {
+            UpdateBuildingInfo();
             UpdateButtonStates();
         }
         
@@ -150,8 +165,12 @@ namespace UI.Buildings
         private void OnUpgradeClicked()
         {
             BuildingManager.Instance.UpgradeBuilding(currentBuilding);
+            UpdateBuildingInfo();
             UpdateButtonStates();
-            upgradeTooltipTrigger.RefreshTooltip();
+            if (upgradeButton.gameObject.activeSelf)
+            {
+                upgradeTooltipTrigger.RefreshTooltip();
+            }
             currentHealthComponent = null;
         }
         /// <summary>

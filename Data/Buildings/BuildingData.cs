@@ -1,5 +1,6 @@
 using UnityEngine;
 using Enums;
+using Managers;
 
 namespace Data.Buildings
 {
@@ -42,9 +43,8 @@ namespace Data.Buildings
         [Header("基本信息")]
         public BuildingType BuildingType;
         public BuildingFunction Function;
-        public string BuildingName;
-        [TextArea(2, 4)]
-        public string Description;
+        //public string BuildingName;
+        //public string Description;
         public GameObject Prefab;
         public int BuildCost = 50;
         public float HpIncreaseRate = 100f;        // 建造速度

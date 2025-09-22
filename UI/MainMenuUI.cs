@@ -13,6 +13,8 @@ namespace UI
         [Header("菜单按钮")]
         [SerializeField] private Button startGameButton;
         [SerializeField] private Button quitGameButton;
+        [SerializeField] private Button creditsButton;
+        [SerializeField] private Button creditsCloseButton;
         [SerializeField] private Button settingsButton;
 
         [Header("最高纪录显示")]
@@ -21,6 +23,7 @@ namespace UI
         [Header("菜单面板")]
         [SerializeField] private GameObject mainMenuPanel;
         [SerializeField] private GameObject settingsPanel;
+        [SerializeField] private GameObject creditsPanel;
 
         private void Start()
         {
@@ -33,6 +36,12 @@ namespace UI
             
             if (settingsButton != null)
                 settingsButton.onClick.AddListener(OnSettingsClicked);
+            
+            if (creditsButton != null)
+                creditsButton.onClick.AddListener(()=> creditsPanel.SetActive(true));
+            
+            if (creditsCloseButton != null)
+                creditsCloseButton.onClick.AddListener(()=> creditsPanel.SetActive(false));
 
             // 显示最高纪录
             UpdateBestRecordDisplay();

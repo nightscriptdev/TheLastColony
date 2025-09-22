@@ -21,6 +21,11 @@ namespace UI.Buildings
         {
             EventManager.OnResearchComplete += OnResearchComplete;
         }
+        
+        private void OnDisable()
+        {
+            EventManager.OnResearchComplete -= OnResearchComplete;
+        }
 
         private void Start()
         {

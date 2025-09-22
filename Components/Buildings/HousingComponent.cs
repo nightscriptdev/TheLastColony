@@ -1,5 +1,6 @@
 ﻿using Core;
 using Interface;
+using Managers;
 using UnityEngine;
 namespace Components.Buildings
 {
@@ -47,7 +48,8 @@ namespace Components.Buildings
         public int ProvidedPopulation => providedMaxPopulation;
         public string GetInfoText()
         {
-            return buildingComponent.Data.Description + "\n+" + buildingComponent.LevelData.PopulationCapacity + "人口上限";
+            return LocalizationManager.Instance.GetLocalizedBuildingDescription(buildingComponent.Data.BuildingType) + "\n" +
+                   LocalizationManager.Instance.GetGameText("building.population_capacity", buildingComponent.LevelData.PopulationCapacity);
         }
     }
 }

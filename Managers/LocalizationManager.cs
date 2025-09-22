@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using Core;
+using Enums;
 using UnityEngine;
 using UnityEngine.Localization.Settings;
 
@@ -88,26 +89,26 @@ namespace Managers
                     return entry.GetLocalizedString();
                 }
             }
-            
-            Debug.LogWarning($"找不到本地化字符串: {tableReference}/{entryReference}");
             return entryReference;
         }
         
         public string GetLocalizedString(string tableReference, string entryReference, params object[] args)
         {
             string localizedString = GetLocalizedString(tableReference, entryReference);
-            try
-            {
-                return string.Format(localizedString, args);
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"格式化本地化字符串失败: {entryReference}, 错误: {e.Message}");
-                return localizedString;
-            }
+            return string.Format(localizedString, args);
         }
         
         public string GetGameText(string key) => GetLocalizedString("GameTexts", key);
+        public string GetUIText(string key) => GetLocalizedString("UITexts", key);
         public string GetGameText(string key, params object[] args) => GetLocalizedString("GameTexts", key, args);
+        public string GetUIText(string key, params object[] args) => GetLocalizedString("UITexts", key, args);
+
+        public string GetLocalizedBuildingName(BuildingType buildingType) => GetGameText("building." + buildingType);
+        
+        public string GetLocalizedBuildingDescription(BuildingType buildingType) => GetGameText("building." + buildingType + ".desc");
+        
+        public string GetLocalizedSkillName(SkillType buildingType) => GetGameText("skill." + buildingType);
+        
+        public string GetLocalizedSkillDescription(SkillType buildingType) => GetGameText("skill." + buildingType + ".desc");
     }
 }

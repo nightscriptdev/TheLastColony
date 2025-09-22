@@ -4,6 +4,7 @@ using System.Collections;
 using Data.Buildings;
 using Core;
 using Interface;
+using Managers;
 
 namespace Components.Buildings
 {
@@ -150,11 +151,10 @@ namespace Components.Buildings
             // 播放建造完成效果
             if (buildingCompleteEffect != null)
             {
-                Destroy(Instantiate(buildingCompleteEffect, transform.position, Quaternion.identity), 0.833f);
+                Destroy(Instantiate(buildingCompleteEffect, transform.position + new Vector3(0, 0.45f,0), Quaternion.identity), 0.833f);
             }
 
             OnBuildingCompleted?.Invoke(this);
-            Debug.Log($"{buildingData.BuildingName} 建造/升级完成！");
         }
         
         /// <summary>
@@ -194,7 +194,7 @@ namespace Components.Buildings
 
             if (destructionEffect != null)
             {
-                Destroy(Instantiate(destructionEffect, transform.position, Quaternion.identity), 0.667f); 
+                Destroy(Instantiate(destructionEffect, transform.position + new Vector3(0, 0.45f, 0), Quaternion.identity), 0.444f); 
             }
             Destroy(gameObject);
             
@@ -232,7 +232,7 @@ namespace Components.Buildings
             {
                 return InfoProvider.GetInfoText();
             }
-            return Data.Description;
+            return LocalizationManager.Instance.GetLocalizedBuildingDescription(Data.BuildingType);
         }
 
         private void OnTakeDamage(int amount)
@@ -246,7 +246,7 @@ namespace Components.Buildings
             spriteRenderer. material.SetFloat(FlashAmountID, 1f);
             
             // 等待指定的持续时间
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(0.15f);
 
             // 恢复正常
             spriteRenderer.material.SetFloat(FlashAmountID, 0f);
