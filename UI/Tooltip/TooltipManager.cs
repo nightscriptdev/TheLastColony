@@ -38,7 +38,11 @@ namespace UI
         
         public void Show(string content)
         {
-            if (string.IsNullOrEmpty(content)) return;
+            if (string.IsNullOrEmpty(content))
+            {
+                Hide();
+                return;
+            }
             ShowTooltip(content);
         }
 

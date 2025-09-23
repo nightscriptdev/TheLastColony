@@ -8,6 +8,8 @@ using Enums;
 using Managers;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Random = UnityEngine.Random;
+
 namespace Core.Grid
 {
     /// <summary>
@@ -290,8 +292,12 @@ namespace Core.Grid
             }
             
             targetBuilding = closestTargetBuilding;
-            if(targetBuilding == null)
-                Debug.LogError($"target NUll [{GridToWorldBottomCenter(closestNode.gridPosition.x, closestNode.gridPosition.y)}]: "+enemy.name, enemy.gameObject);
+            /*if (targetBuilding == null)
+            {
+                targetBuilding = BuildingManager.Instance.AllBuildings[Random.Range(0, BuildingManager.Instance.AllBuildings.Count - 1)];
+                path = FindPath(startGrid, targetBuilding.GridPosition, out endNode, true);
+                return path;
+            }*/
             return pathfinder.RetracePath(closestNode);
             
             bool FindBestTargetGrid()

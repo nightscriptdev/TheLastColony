@@ -13,13 +13,10 @@ namespace Components.Buildings
     /// </summary>
     public class BuildingComponent : MonoBehaviour
     {
-        [Header("建筑数据")]
         [SerializeField] private BuildingData buildingData;
-        [SerializeField] private AnimationClip animationClip;
         
-        [Header("建造状态")]
         [SerializeField] private bool isBuilt = false;
-        [Header("视觉效果")]
+        
         [SerializeField] private SpriteRenderer spriteRenderer;
         [SerializeField] private GameObject buildingCompleteEffect;
         [SerializeField] private GameObject destructionEffect;
@@ -28,34 +25,29 @@ namespace Components.Buildings
         public Action<BuildingComponent> OnBuildingDestroyed;
         public Action OnBuildingUpgraded;
 
-        public BuildingKey BuildingKey;
-
         public IInfoProvider InfoProvider;
-        
-        // 组件引用
+
         private HealthComponent _healthComponent;
         private HealthBarUI _healthBarUI;
-        // 属性
+        
         public BuildingData Data => buildingData;
         public BuildingData.LevelData LevelData => buildingData.LevelDatas[Level-1];
-        public bool IsBuilt => isBuilt;
         public bool HasNextLevel => Level < Data.LevelDatas.Length;
         public bool IsUpgradeable => isBuilt && _healthComponent.IsFullHealth;
         
-        // Shader 属性的 ID，比使用字符串更高效
         private static readonly int FlashAmountID = Shader.PropertyToID("_FlashAmount");
-        
         public Vector2Int GridPosition { get; private set; }
         public int Level { get; private set; } = 1;
 
         protected virtual void Awake()
         {
-            _healthComponent = GetComponent<HealthComponent>();
-            _healthBarUI = GetComponent<HealthBarUI>();
+            if (_healthComponent == null)
+                _healthComponent = GetComponent<HealthComponent>();
+            if (_healthBarUI == null)
+                _healthBarUI = GetComponent<HealthBarUI>();
             if (spriteRenderer == null)
                 spriteRenderer = GetComponent<SpriteRenderer>();
             
-            BuildingKey = new BuildingKey(Data.BuildingType, Level);
             InfoProvider = GetComponent<IInfoProvider>();
         }
         protected virtual void OnEnable()
@@ -71,14 +63,12 @@ namespace Components.Buildings
         {
             if (_healthComponent != null)
             {
+                _healthComponent.OnTakeDamage -= OnTakeDamage;
                 _healthComponent.OnDeath -= OnBuildingDeath;
             }
             EventManager.OnDayStart -= OnDayStart;
         }
 
-        /// <summary>
-        /// 初始化建筑（用于运行时创建建筑）
-        /// </summary>
         public virtual void Initialize(BuildingData data, Vector2Int gridPos)
         {
             buildingData = data;
@@ -88,6 +78,7 @@ namespace Components.Buildings
             
             StartBuilding();
         }
+        
         public virtual void InitializePrebuilt(Vector2Int gridPos)
         {
             GridPosition = gridPos;
@@ -97,29 +88,25 @@ namespace Components.Buildings
             isBuilt = true;
             OnBuildingCompleted?.Invoke(this);
         }
-        /// <summary>
-        /// 开始建造过程
-        /// </summary>
-        public virtual void StartBuilding()
+        
+        private void StartBuilding()
         {
             if (isBuilt) return;
 
-            // 设置初始HP为0
             _healthComponent.SetCurrentHP(0);
 
-            // 开始建造协程
             StartCoroutine(BuildingAndHealProcess());
         }
+        
         private IEnumerator BuildingAndHealProcess()
         {
-            // 设置半透明
             if(!isBuilt)
                 SetBuildingAlpha(buildingAlpha);
+            
             float accumulatedHp = 0f;
 
             while (_healthComponent.CurrentHP < _healthComponent.MaxHP)
             {
-                // 仅在白天建造或维修
                 if (TimeManager.Instance.IsDay)
                 {
                     // 累积血量增长
@@ -133,22 +120,19 @@ namespace Components.Buildings
                         accumulatedHp -= hpToAdd; // 减去已经添加的部分
                     }
                 }
-                yield return null; // 每帧检查一次
+                yield return null;
             }
             
             if (!isBuilt)
                 CompleteBuilding();
         }
-        /// <summary>
-        /// 完成建造
-        /// </summary>
+
         protected virtual void CompleteBuilding()
         {
             isBuilt = true;
-            // 恢复透明度
+            
             SetBuildingAlpha(1f);
 
-            // 播放建造完成效果
             if (buildingCompleteEffect != null)
             {
                 Destroy(Instantiate(buildingCompleteEffect, transform.position + new Vector3(0, 0.45f,0), Quaternion.identity), 0.833f);

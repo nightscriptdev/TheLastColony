@@ -43,6 +43,7 @@ namespace Components.Enemies
         private static readonly int FlashColorID = Shader.PropertyToID("_FlashColor");
         
         private Vector3? occupiedPosition = null;
+        private Collider2D[] nearbyColliders = new Collider2D[10];
         
         private enum EnemyState
         {
@@ -58,8 +59,6 @@ namespace Components.Enemies
 
         private void Awake()
         {
-            Physics2D.queriesStartInColliders = false;
-            
             healthComponent = GetComponent<HealthComponent>();
             if (healthComponent == null)
                 healthComponent = gameObject.AddComponent<HealthComponent>();
@@ -95,7 +94,7 @@ namespace Components.Enemies
             healthComponent.SetMaxHP(hp, true);
             
             currentSpeed = enemyData.baseSpeed;
-            
+
             isAttacking = false;
             attackCooldown = 0f;
             currentPath = null;
@@ -118,23 +117,15 @@ namespace Components.Enemies
                 
                 UpdateTarget();
                 
-                if (currentTarget != null)
+                if (currentTarget)
                 {
-                    float distance = Vector2.Distance(transform.position, currentTarget.transform.position);
-                    
-                    if (distance <= attackRange)
+                    if (Vector2.Distance(transform.position, currentTarget.transform.position) <= attackRange)
                     {
                         currentState = EnemyState.Attacking;
-                    }
-                    else if (!isAttacking) 
-                    {
-                        currentState = EnemyState.Moving;
+                        continue;
                     }
                 }
-                else
-                {
-                    currentState = EnemyState.Idle;
-                }
+                currentState = EnemyState.Moving;
             }
         }
         
@@ -243,7 +234,7 @@ namespace Components.Enemies
 
         private void UpdateTarget()
         {
-            if (currentTarget == null || !currentTarget.gameObject.activeSelf)
+            if (!currentTarget || !currentTarget.gameObject.activeSelf)
             {
                 currentPath = GridManager.Instance.GetNearestPathToTarget(this, out currentTarget);
                 if (currentPath != null)
@@ -265,7 +256,7 @@ namespace Components.Enemies
         
         private void MoveAlongPath()
         {
-            if (currentPath == null || currentPathIndex >= currentPath.Count || currentTarget == null)
+            if (currentPath == null || currentPathIndex >= currentPath.Count)
             {
                 return;
             }
@@ -293,10 +284,12 @@ namespace Components.Enemies
             Vector3 moveDirection = (targetPos - transform.position).normalized;
             Vector3 separation = CalculateSeparationForce();
             moveDirection = (moveDirection + separation * separationWeight).normalized;
+                
             
             transform.position += moveDirection * currentSpeed * Time.deltaTime;
             
-            spriteRenderer.flipX = transform.position.x > currentTarget.transform.position.x;
+            if(currentTarget)
+                spriteRenderer.flipX = transform.position.x > currentTarget.transform.position.x;
             
             if (Vector3.Distance(transform.position, targetPos) < 0.1f)
             {
@@ -306,12 +299,15 @@ namespace Components.Enemies
         private Vector3 CalculateSeparationForce()
         {
             Vector3 force = Vector3.zero;
+            
+            int colliderCount = Physics2D.OverlapCircleNonAlloc(transform.position, separationRadius, nearbyColliders, EnemyManager.Instance.EnemyLayerMask);
             int count = 0;
             
-            Collider2D[] nearbyColliders = Physics2D.OverlapCircleAll(transform.position, separationRadius, EnemyManager.Instance.EnemyLayerMask);
-            
-            foreach (var collider in nearbyColliders)
+            for (int i = 0; i < colliderCount; i++)
             {
+                var collider = nearbyColliders[i];
+                
+                if (collider.transform == transform) continue;
                 Vector3 diff = transform.position - collider.transform.position;
                 if (diff.magnitude > 0)
                 {
@@ -411,7 +407,7 @@ namespace Components.Enemies
             {
                 Destroy(Instantiate(enemyData.deathEffectPrefab, transform.position, Quaternion.identity), 0.5f);
             }
-            
+            StopAllCoroutines();
             ReleaseGrid();
             EventManager.OnEnemyDeath?.Invoke(this);
             Destroy(gameObject);
@@ -436,6 +432,7 @@ namespace Components.Enemies
         void OnCellBecameObstacle(Vector3 pos)
         {
             if(currentPath == null || occupiedPosition!=null) return;
+            
             if (currentPath.Contains(pos))
             {
                 currentTarget = null;

@@ -73,13 +73,6 @@ namespace Components.Buildings
                     break;
             }
 
-            // 显示生产特效
-            /*f (productionEffect != null)
-            {
-                var effect = Instantiate(productionEffect, transform.position + Vector3.up * 0.5f, Quaternion.identity);
-                Destroy(effect, 2f);
-            }*/
-
             // 显示飘字提示
             ShowProductionFloatingText($"+{finalAmount}");
         }
@@ -111,7 +104,7 @@ namespace Components.Buildings
 
         public string GetInfoText()
         {
-            return LocalizationManager.Instance.GetLocalizedBuildingDescription(buildingComponent.Data.BuildingType) + "\n" + LocalizationManager.Instance.GetGameText("building.production", buildingComponent.LevelData.BaseProduction, buildingComponent.Data.ProductionInterval)+"\n" + LocalizationManager.Instance.GetGameText("building.daytime_only");
+            return LocalizationManager.Instance.GetLocalizedBuildingDescription(buildingComponent.Data.BuildingType) + "\n" + LocalizationManager.Instance.GetGameText("building.production", ResourceManager.Instance.CalculateFinalProduction(buildingComponent.LevelData.BaseProduction), buildingComponent.Data.ProductionInterval)+"\n" + LocalizationManager.Instance.GetGameText("building.daytime_only");
         }
     }
 }

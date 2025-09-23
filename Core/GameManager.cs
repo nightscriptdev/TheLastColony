@@ -106,7 +106,7 @@ namespace Core
                 BestRecordDays = CurrentDay;
                 SaveBestRecordDays();
             }
-        
+            Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
             EventManager.OnGameEnd.Invoke();
         }
 
