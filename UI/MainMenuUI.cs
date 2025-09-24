@@ -5,29 +5,22 @@ using TMPro;
 
 namespace UI
 {
-    /// <summary>
-    /// 主菜单UI控制器
-    /// </summary>
     public class MainMenuUI : MonoBehaviour
     {
-        [Header("菜单按钮")]
         [SerializeField] private Button startGameButton;
         [SerializeField] private Button quitGameButton;
         [SerializeField] private Button creditsButton;
         [SerializeField] private Button creditsCloseButton;
         [SerializeField] private Button settingsButton;
 
-        [Header("最高纪录显示")]
         [SerializeField] private TextMeshProUGUI bestRecordText;
 
-        [Header("菜单面板")]
         [SerializeField] private GameObject mainMenuPanel;
         [SerializeField] private GameObject settingsPanel;
         [SerializeField] private GameObject creditsPanel;
 
         private void Start()
         {
-            // 绑定按钮事件
             if (startGameButton != null)
                 startGameButton.onClick.AddListener(OnStartGameClicked);
             
@@ -43,10 +36,6 @@ namespace UI
             if (creditsCloseButton != null)
                 creditsCloseButton.onClick.AddListener(()=> creditsPanel.SetActive(false));
 
-            // 显示最高纪录
-            UpdateBestRecordDisplay();
-            
-            // 确保主菜单面板显示
             ShowMainMenu();
         }
 
@@ -65,9 +54,6 @@ namespace UI
             ShowSettings();
         }
 
-        /// <summary>
-        /// 显示主菜单
-        /// </summary>
         public void ShowMainMenu()
         {
             if (mainMenuPanel != null)
@@ -77,9 +63,6 @@ namespace UI
                 settingsPanel.SetActive(false);
         }
 
-        /// <summary>
-        /// 显示设置菜单
-        /// </summary>
         public void ShowSettings()
         {
             if (mainMenuPanel != null)
@@ -87,28 +70,6 @@ namespace UI
             
             if (settingsPanel != null)
                 settingsPanel.SetActive(true);
-        }
-
-        /// <summary>
-        /// 更新最高纪录显示
-        /// </summary>
-        private void UpdateBestRecordDisplay()
-        {
-            if (bestRecordText != null)
-            {
-                int bestRecord = PlayerPrefs.GetInt("BestRecordDays", 0);
-                bestRecordText.text = bestRecord > 0 ? 
-                    $"最高纪录: {bestRecord} 天" : 
-                    "还没有纪录";
-            }
-        }
-
-        /// <summary>
-        /// 返回主菜单按钮回调（从设置面板）
-        /// </summary>
-        public void OnBackToMainMenuClicked()
-        {
-            ShowMainMenu();
         }
     }
 }

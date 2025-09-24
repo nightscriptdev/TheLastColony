@@ -26,10 +26,8 @@ namespace UI
                 bool hasEnoughKnowledge = HasEnoughKnowledge();
                 bool canUse = !isOnCooldown && hasEnoughKnowledge;
             
-                // 更新冷却显示
                 UpdateCooldownDisplay();
             
-                // 更新按钮颜色（可选）
                 UpdateButtonColor(canUse, hasEnoughKnowledge);
             }
         }

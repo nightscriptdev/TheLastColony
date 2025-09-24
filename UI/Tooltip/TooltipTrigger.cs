@@ -11,6 +11,8 @@ namespace UI.Tooltip
         
         private BuildingButtonUI buildingButtonUI;
 
+        
+        
         public void RefreshTooltip()
         {
             if (!string.IsNullOrEmpty(customTooltip))
@@ -32,12 +34,14 @@ namespace UI.Tooltip
             }
         }
 
+        public void Hide()
+        {
+            TooltipManager.Instance.Hide();
+        }
+        
         protected virtual void OnDisable()
         {
-            if (TooltipManager.Instance != null)
-            {
-                TooltipManager.Instance.Hide();
-            }
+            Hide();
         }
 
         public virtual string GetTooltip()

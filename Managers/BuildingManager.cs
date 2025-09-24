@@ -4,28 +4,16 @@ using Data.Buildings;
 using Components.Buildings;
 using Core;
 using Core.Grid;
-using Enums;
 using UnityEngine.EventSystems;
 
 namespace Managers
 {
-    /// <summary>
-    /// 建筑管理器 - 管理所有建筑的建造、升级、拆除等操作
-    /// 使用网格系统管理建筑位置，处理建筑与资源系统的交互
-    /// </summary>
     public class BuildingManager : MonoSingleton<BuildingManager>
     {
-        [Header("建筑数据")]
-        [SerializeField] private BuildingDatabase buildingDatabase;
-        
-        [Header("建造设置")]
-        [SerializeField] private LayerMask obstacleLayerMask = -1;
         [SerializeField] private Transform buildingsParent;
         
-        // 建筑列表
         private List<BuildingComponent> allBuildings = new List<BuildingComponent>();
         
-        // 建造模式
         private bool isBuildingMode = false;
         private BuildingData currentBuildingData;
         private GameObject buildingPreview;
@@ -60,18 +48,12 @@ namespace Managers
             }
         }
 
-        /// <summary>
-        /// 游戏开始时的初始化
-        /// </summary>
         private void OnGameStart()
         {
             // 初始化开局建筑
             InitializeStartingBuildings();
         }
 
-        /// <summary>
-        /// 初始化开局建筑
-        /// </summary>
         private void InitializeStartingBuildings()
         {
             foreach (Transform buildingTransform in buildingsParent)
@@ -82,12 +64,8 @@ namespace Managers
             }
         }
 
-        /// <summary>
-        /// 开始建造模式
-        /// </summary>
-        public void StartBuildingMode(BuildingType buildingType)
+        public void StartBuildingMode(BuildingData buildingData)
         {
-            var buildingData = GetBuildingData(buildingType);
             if (buildingData == null)
             {
                 return;
@@ -99,9 +77,6 @@ namespace Managers
             Cursor.visible = false;
         }
 
-        /// <summary>
-        /// 结束建造模式
-        /// </summary>
         public void EndBuildingMode()
         {
             Cursor.visible = true;
@@ -115,9 +90,6 @@ namespace Managers
             }
         }
 
-        /// <summary>
-        /// 创建建筑预览
-        /// </summary>
         private void CreateBuildingPreview()
         {
             if (currentBuildingData.Prefab != null)
@@ -130,9 +102,6 @@ namespace Managers
             }
         }
 
-        /// <summary>
-        /// 更新建造模式
-        /// </summary>
         private void UpdateBuildingMode()
         {
             var gridManager = GridManager.Instance;
@@ -157,7 +126,7 @@ namespace Managers
                 }
                 else
                 {
-                    color = new Color(1f, 0f, 0f, 0.5f); // 红色半透明
+                    color = new Color(1f, 0f, 0f, 0.5f);
                 }
                 buildingPreviewSpriteRenderer.color = color;
             }
@@ -179,10 +148,8 @@ namespace Managers
             
             if (buildingComponent != null)
             {
-                // 初始化建筑
                 buildingComponent.Initialize(currentBuildingData, new Vector2Int(gridX, gridY));
                 
-                // 注册建筑
                 RegisterBuilding(buildingComponent);
 
                 ResourceManager.Instance.SpendGold(buildingComponent.Data.BuildCost);
@@ -198,45 +165,27 @@ namespace Managers
 
             allBuildings.Add(building);
             
-            // 订阅事件
-            building.OnBuildingCompleted += OnBuildingComplete;
             building.OnBuildingDestroyed += OnBuildingDestroyed;
             
             EventManager. OnBuildingPlaced?.Invoke(building);
         }
 
-        /// <summary>
-        /// 建筑完成回调
-        /// </summary>
-        private void OnBuildingComplete(BuildingComponent building)
-        {
-        }
-
-        /// <summary>
-        /// 建筑被摧毁回调
-        /// </summary>
         private void OnBuildingDestroyed(BuildingComponent building)
         {
             allBuildings.Remove(building);
         }
 
-        /// <summary>
-        /// 升级建筑
-        /// </summary>
         public bool UpgradeBuilding(BuildingComponent building)
         {
             if (!building.HasNextLevel || !building.IsUpgradeable)
             {
-                Debug.Log("无法升级：建筑未满血或已是最高等级。");
                 return false;
             }
 
-            // 从建筑当前等级的数据中获取升级到下一级所需的费用
             int upgradeCost = building.LevelData.UpgradeCost;
 
             if (!ResourceManager.Instance.SpendGold(upgradeCost))
             {
-                Debug.Log("金币不足，无法升级。");
                 return false;
             }
 
@@ -244,20 +193,9 @@ namespace Managers
             return true;
         }
 
-        /// <summary>
-        /// 拆除建筑
-        /// </summary>
         public void DemolishBuilding(BuildingComponent building)
         {
             building.DemolishBuilding();
-        }
-
-        /// <summary>
-        /// 获取建筑数据
-        /// </summary>
-        public BuildingData GetBuildingData(BuildingType buildingType)
-        {
-            return buildingDatabase?.GetBuildingData(buildingType);
         }
 
         void OnNightStart(int day)

@@ -2,15 +2,9 @@
 using UnityEngine.UI;
 using Components;
 using System.Collections;
-/// <summary>
-/// 负责控制血条UI的显示和隐藏
-/// 监听HPComponent的事件来更新自己
-/// 包含残影效果：受伤时前景血条立即下降，背景血条延迟跟随
-/// 满血时自动隐藏，血量不满时一直显示
-/// </summary>
+
 public class HealthBarUI : MonoBehaviour
 {
-    [Header("UI组件")]
     [SerializeField] private GameObject healthBar;
     [SerializeField] private Image background;
     [SerializeField] private Image mainFill; // 主血条
@@ -22,8 +16,8 @@ public class HealthBarUI : MonoBehaviour
     [SerializeField] private float shadowSpeed = 2f;
     [SerializeField] private bool enableShadowEffect = true;
     
-    private float targetFillAmount; // 目标血量百分比
-    private bool isShadowAnimating = false; // 残影是否正在动画
+    private float targetFillAmount;
+    private bool isShadowAnimating = false;
     private Coroutine shadowCoroutine;
 
     
@@ -49,7 +43,6 @@ public class HealthBarUI : MonoBehaviour
             healthComponent.OnDeath -= HandleDeath;
         }
         
-        // 停止残影协程
         if (shadowCoroutine != null)
         {
             StopCoroutine(shadowCoroutine);
@@ -74,33 +67,25 @@ public class HealthBarUI : MonoBehaviour
         float newFillAmount = (float)currentHP / maxHP;
         targetFillAmount = newFillAmount;
         
-        // 立即更新主血条
         mainFill.fillAmount = newFillAmount;
         
-        // 如果启用残影效果
         if (enableShadowEffect)
         {
-            // 如果是受伤（血量下降）
             if (newFillAmount < shadowFill.fillAmount)
             {
-                // 停止之前的残影动画
                 if (shadowCoroutine != null)
                 {
                     StopCoroutine(shadowCoroutine);
                 }
-                // 开始新的残影动画
                 shadowCoroutine = StartCoroutine(ShadowFollowCoroutine());
             }
-            // 如果是回血
             else if (newFillAmount > shadowFill.fillAmount)
             {
-                // 回血时两个血条同步更新
                 shadowFill.fillAmount = newFillAmount;
             }
         }
         else
         {
-            // 不启用残影效果时，两个血条同步更新
             shadowFill.fillAmount = newFillAmount;
         }
     }
@@ -109,7 +94,6 @@ public class HealthBarUI : MonoBehaviour
     {
         UpdateHealthBar(currentHP, maxHP);
         
-        // 根据血量决定血条显示状态
         if (currentHP > 0 && currentHP < maxHP)
         {
             // 血量不满时显示血条
@@ -124,17 +108,14 @@ public class HealthBarUI : MonoBehaviour
     
     private void HandleTakeDamage(int damageAmount)
     {
-        // 受伤时显示血条（此时肯定不是满血）
         ShowHealthBar();
     }
     
     private void HandleHealthFull()
     {
-        // 满血时立即隐藏血条，并同步两个血条
         mainFill.fillAmount = shadowFill.fillAmount = 1f;
         HideHealthBar();
         
-        // 停止残影动画
         if (shadowCoroutine != null)
         {
             StopCoroutine(shadowCoroutine);
@@ -153,33 +134,22 @@ public class HealthBarUI : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// 显示血条
-    /// </summary>
     public void ShowHealthBar()
     {
         healthBar.SetActive(true);
     }
     
-    /// <summary>
-    /// 隐藏血条
-    /// </summary>
     public void HideHealthBar()
     {
         healthBar.SetActive(false);
     }
     
-    /// <summary>
-    /// 残影跟随协程
-    /// </summary>
     private IEnumerator ShadowFollowCoroutine()
     {
         isShadowAnimating = true;
         
-        // 延迟一段时间再开始跟随
         yield return new WaitForSeconds(shadowDelayTime);
         
-        // 平滑跟随到目标值
         while (Mathf.Abs(shadowFill.fillAmount - targetFillAmount) > 0.01f)
         {
             shadowFill.fillAmount = Mathf.MoveTowards(
@@ -190,15 +160,11 @@ public class HealthBarUI : MonoBehaviour
             yield return null;
         }
         
-        // 确保最终值精确
         shadowFill.fillAmount = targetFillAmount;
         isShadowAnimating = false;
         shadowCoroutine = null;
     }
     
-    /// <summary>
-    /// 重置血条状态
-    /// </summary>
     public void ResetHealthBar()
     {
         if (healthComponent != null)
@@ -224,5 +190,4 @@ public class HealthBarUI : MonoBehaviour
             }
         }
     }
-    
 }

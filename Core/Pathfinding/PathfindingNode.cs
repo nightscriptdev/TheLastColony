@@ -5,10 +5,10 @@ namespace Core.Pathfinding
     public class PathfindingNode
     {
         public Vector2Int gridPosition;
-        public int gCost; // 实际代价
-        public int hCost; // 启发式代价
-        public int FCost => gCost + hCost; // 总代价
-        public PathfindingNode parent; // 父节点
+        public int gCost;
+        public int hCost;
+        public int FCost => gCost + hCost;
+        public PathfindingNode parent;
 
         public PathfindingNode()
         {
@@ -17,7 +17,7 @@ namespace Core.Pathfinding
         public PathfindingNode(Vector2Int gridPosition)
         {
             this.gridPosition = gridPosition;
-            this.gCost = int.MaxValue; // 初始为极大值，便于比较
+            this.gCost = int.MaxValue;
             this.hCost = 0;
             this.parent = null;
         }

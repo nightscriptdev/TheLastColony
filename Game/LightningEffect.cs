@@ -12,7 +12,7 @@ namespace Game
             foreach (var collider in enemies)
             {
                 var enemy = collider.GetComponent<HealthComponent>();
-                if (enemy != null)
+                if (enemy)
                 {
                     enemy.TakeDamage(skillData.baseDamage);
                 }

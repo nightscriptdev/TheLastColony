@@ -64,7 +64,6 @@ namespace Core.Pathfinding
                     int moveCost = (Mathf.Abs(direction.x) == 1 && Mathf.Abs(direction.y) == 1) ? 14 : 10;
                     int newGCost = currentNode.gCost + moveCost;
                     
-                    // 确保 nodeMap 中有该节点实例（不会重复new不同实例）
                     PathfindingNode neighborNode;
                     if (!nodeMap.TryGetValue(neighborPos, out neighborNode))
                     {
@@ -73,7 +72,6 @@ namespace Core.Pathfinding
                         nodeMap[neighborPos] = neighborNode;
                     }
                     
-                    // 只有当找到更优路径时才更新，并在必要时加入 openSet
                     if (newGCost < neighborNode.gCost)
                     {
                         neighborNode.gCost = newGCost;
@@ -84,14 +82,10 @@ namespace Core.Pathfinding
                 }
             }
             
-            // 无法到达目标，返回最近的可达点
             endNode = closestNode;
             return RetracePath(closestNode);
         }
         
-        /// <summary>
-        /// 获取开放列表中F成本最低的节点
-        /// </summary>
         private PathfindingNode GetLowestFCostNode(List<PathfindingNode> openSet)
         {
             PathfindingNode lowestFCostNode = openSet[0];
@@ -106,9 +100,6 @@ namespace Core.Pathfinding
             return lowestFCostNode;
         }
         
-        /// <summary>
-        /// 回溯路径
-        /// </summary>
         public List<Vector3> RetracePath(PathfindingNode endNode)
         {
             List<Vector3> path = new List<Vector3>();

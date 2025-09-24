@@ -45,7 +45,6 @@ namespace Components.Buildings
         {
             ResourceManager.Instance.DecreaseMaxPopulation(buildingComponent.Data.LevelDatas[buildingComponent.Level-2].PopulationCapacity);
         }
-        public int ProvidedPopulation => providedMaxPopulation;
         public string GetInfoText()
         {
             return LocalizationManager.Instance.GetLocalizedBuildingDescription(buildingComponent.Data.BuildingType) + "\n" +

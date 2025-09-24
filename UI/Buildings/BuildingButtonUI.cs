@@ -12,7 +12,6 @@ namespace UI.Buildings
 {
     public class BuildingButtonUI : TooltipTrigger
     {
-        [Header("UI组件")]
         [SerializeField] private Button button;
         [SerializeField] private Image iconImage;
         
@@ -49,7 +48,7 @@ namespace UI.Buildings
             
             infoBuilder.AppendLine($"<b><size=120%>{loc.GetLocalizedBuildingName(buildingData.BuildingType)}</size></b>");
             
-            // 描述 - 根据建筑类型获取本地化描述
+            // 描述
             infoBuilder.AppendLine($"<i>{loc.GetLocalizedBuildingDescription(buildingData.BuildingType)}</i>\n");
             
             // 属性
@@ -61,7 +60,7 @@ namespace UI.Buildings
         
         private void OnButtonClick()
         {
-            EventManager.OnBuildingButtonClick?.Invoke(buildingData.BuildingType);
+            EventManager.OnBuildingButtonClick?.Invoke(buildingData);
         }
         
         private void OnGoldChanged(int newAmount)

@@ -1,6 +1,5 @@
 using Core;
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 namespace UI
@@ -11,12 +10,6 @@ namespace UI
         [SerializeField] private TextMeshProUGUI foodText;
         [SerializeField] private TextMeshProUGUI goldText;
         [SerializeField] private TextMeshProUGUI knowledgeText;
-
-        [Header("资源图标（可选）")]
-        [SerializeField] private Image populationIcon;
-        [SerializeField] private Image foodIcon;
-        [SerializeField] private Image goldIcon;
-        [SerializeField] private Image knowledgeIcon;
 
         private void OnEnable()
         {

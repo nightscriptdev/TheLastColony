@@ -10,7 +10,6 @@ namespace UI
     public class ResearchUI : MonoBehaviour
     {
         public GameObject researchPanel;
-        public Transform researchContent;
         public Button openButton;
         public Button closeButton;
     

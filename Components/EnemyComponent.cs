@@ -12,9 +12,6 @@ using Game;
 
 namespace Components.Enemies
 {
-    /// <summary>
-    /// 敌人组件 - 控制敌人的所有行为
-    /// </summary>
     public class EnemyComponent : MonoBehaviour
     {
         public Transform center;
@@ -158,22 +155,22 @@ namespace Components.Enemies
 
             if (statusEffects.TryGetValue(effectType, out StatusEffect existingEffect))
             {
-                // 效果已存在，刷新持续时间
-                // 也可以根据游戏设计决定是取效果强的，还是叠加等
-                existingEffect.remainingTime = newEffect.duration;
-            
-                // 如果新效果的参数不同（例如减速倍率），则替换掉旧的
+                existingEffect.Remove(this);
+
                 if (newEffect is SlowEffect newSlow && existingEffect is SlowEffect oldSlow)
                 {
-                    if (newSlow.slowMultiplier < oldSlow.slowMultiplier) // 假设乘数越小效果越强
+                    if (newSlow.slowMultiplier < oldSlow.slowMultiplier)
                     {
                         statusEffects[effectType] = newEffect;
+                        newEffect.Apply(this);
+                        return;
                     }
                 }
+                existingEffect.remainingTime = newEffect.duration;
+                existingEffect.Apply(this);
             }
             else
             {
-                // 效果不存在，添加并应用
                 statusEffects.Add(effectType, newEffect);
                 newEffect.Apply(this);
             }
@@ -193,40 +190,42 @@ namespace Components.Enemies
                 }
             }
         
-            // 统一移除过期的效果
-            foreach (var type in effectsToRemove)
+            if (effectsToRemove.Count > 0)
             {
-                if (statusEffects.TryGetValue(type, out StatusEffect effect))
+                foreach (var type in effectsToRemove)
                 {
-                    effect.Remove(this);
-                    statusEffects.Remove(type);
+                    if (statusEffects.TryGetValue(type, out StatusEffect effect))
+                    {
+                        effect.Remove(this);
+                        statusEffects.Remove(type);
+                    }
                 }
+                // 只在有效果被移除时重新计算一次
+                RecalculateStats();
             }
         }
         
         public void RecalculateStats()
         {
-            // --- 数值计算 ---
-            float speedMultiplier = 1f; // 用于跟踪总的速度倍率
+            float speedMultiplier = 1f;
             currentSpeed = enemyData.baseSpeed;
     
             bool isSlowed = false;
 
-            // 遍历所有当前激活的效果
             foreach (var effect in statusEffects.Values)
             {
                 if (effect is SlowEffect slow)
                 {
                     float effectMultiplier = slow.slowMultiplier;
                     currentSpeed *= effectMultiplier;
-                    speedMultiplier *= effectMultiplier; // 累积速度倍率
+                    speedMultiplier *= effectMultiplier;
                     isSlowed = true;
                 }
             }
     
             spriteRenderer.color = isSlowed ? new Color(0.3f, 0.3f, 1f) : Color.white;
     
-            if (animator != null)
+            if (animator)
             {
                 animator.speed = speedMultiplier;
             }
@@ -347,7 +346,6 @@ namespace Components.Enemies
             Vector3 originalPos = transform.position;
             Vector3 targetPos = currentTarget.transform.position;
             Vector3 attackPos = originalPos + (targetPos - originalPos) * 0.8f;
-            //Vector3 attackPos = targetPos;
             
             float attackAnimTime = 0.1f;
             float timer = 0;
@@ -403,11 +401,8 @@ namespace Components.Enemies
             if (currentState == EnemyState.Dead) return; // 防止重复调用
             currentState = EnemyState.Dead;
             
-            if (enemyData.deathEffectPrefab != null)
-            {
-                Destroy(Instantiate(enemyData.deathEffectPrefab, transform.position, Quaternion.identity), 0.5f);
-            }
-            StopAllCoroutines();
+            PoolingManager.Instance.Get(enemyData.deathEffectPrefab).transform.SetPositionAndRotation(transform.position, Quaternion.identity);
+            
             ReleaseGrid();
             EventManager.OnEnemyDeath?.Invoke(this);
             Destroy(gameObject);
@@ -416,7 +411,7 @@ namespace Components.Enemies
         
         private void OnDayStart(int day)
         {
-            OnEnemyDeath(); // 内部防止重复调用
+            OnEnemyDeath();
         }
         
         private void SetMovingAnimation(bool isMoving)
@@ -447,15 +442,6 @@ namespace Components.Enemies
             
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(transform.position, attackRange);
-            
-            Gizmos.color = Color.green;
-            if (currentPath != null)
-            {
-                for (var i = 0; i < currentPath.Count; i++)
-                {
-                    Gizmos.DrawSphere(currentPath[i], 0.25f);
-                }
-            }
         }
     }
 }

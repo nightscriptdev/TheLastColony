@@ -6,9 +6,8 @@ namespace UI
 {
     public class DayNightCycleUI : MonoBehaviour
     {
-        [Header("UI 组件")] 
-        [Tooltip("代表白天的图片")] public Image dayImage;
-        [Tooltip("代表黑夜的图片")] public Image nightImage;
+        public Image dayImage;
+        public Image nightImage;
 
         private void OnEnable()
         {
@@ -24,13 +23,13 @@ namespace UI
 
         private void UpdateDayProgressUI(float progress)
         {
-            if (progress < 0.5f) // 上午 (0% -> 50% of day)
+            if (progress < 0.5f)
             {
                 SetForeground(dayImage); // 白天图片在前
                 // fillAmount 从 0.5 增长到 1.0
                 dayImage.fillAmount = 0.5f + progress;
             }
-            else // 下午 (50% -> 100% of day)
+            else
             {
                 SetForeground(nightImage); // 黑夜图片在前
                 // fillAmount 从 0.0 增长到 0.5
@@ -40,7 +39,7 @@ namespace UI
         
         private void UpdateNightProgressUI(float progress)
         {
-            if (progress < 0.5f) // 前半夜 (0% -> 50% of night)
+            if (progress < 0.5f) 
             {
                 SetForeground(nightImage); // 黑夜图片在前
                 // fillAmount 从 0.5 增长到 1.0
@@ -54,9 +53,6 @@ namespace UI
             }
         }
 
-        /// <summary>
-        /// 辅助函数，将指定的Image设置为前景（渲染在最上层）
-        /// </summary>
         private void SetForeground(Image foregroundImage)
         {
             foregroundImage.transform.SetAsLastSibling();

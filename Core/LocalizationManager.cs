@@ -46,7 +46,6 @@ namespace Managers
             }
             else
             {
-                // 使用保存的语言设置
                 SetLanguage(savedLanguage);
             }
         }

@@ -6,7 +6,6 @@ using Components.Buildings;
 using Core;
 using Data;
 using Data.Buildings;
-using Enums;
 using Managers;
 using UI.Tooltip;
 using UnityEngine.Localization;
@@ -34,8 +33,6 @@ namespace UI.Buildings
         private BuildingComponent currentBuilding;
         private HealthComponent currentHealthComponent;
         
-        //private TowerComponent currentTower;
-        
         private void Start()
         {
             if (upgradeButton != null)
@@ -47,9 +44,6 @@ namespace UI.Buildings
             Hide();
         }
 
-        /*private void Update()
-        {
-        }*/
 
         public void Show(BuildingComponent building)
         {
@@ -59,6 +53,7 @@ namespace UI.Buildings
 
             
             currentBuilding = building;
+            currentBuilding.OnBuildingCompleted += OnBuildingCompleted;
             currentHealthComponent = currentBuilding.GetComponent<HealthComponent>();
             healthBar.InitializeHealthBar(currentHealthComponent.CurrentHP, currentHealthComponent.MaxHP);
             healthText.text = $"{currentHealthComponent.CurrentHP}/{currentHealthComponent.MaxHP}";
@@ -67,6 +62,7 @@ namespace UI.Buildings
 
             UpdateBuildingInfo();
             UpdateButtonStates();
+
             panelRoot.SetActive(true);
         }
         public void OnDisable()
@@ -75,18 +71,29 @@ namespace UI.Buildings
             EventManager.OnResearchComplete -= OnResearchComplete;
             LocalizationSettings.SelectedLocaleChanged -= OnSelectedLocaleChanged;
 
+            if (currentBuilding)
+            {
+                currentBuilding.OnBuildingCompleted -= OnBuildingCompleted;
+                currentBuilding = null;
+            }
             
-            currentBuilding = null;
             if (currentHealthComponent)
             {
                 currentHealthComponent.OnDeath -= Hide;
                 currentHealthComponent.OnHealthChanged -= UpdateHealBar;
+                currentHealthComponent.OnHealthFull -= UpdateButtonStates;
                 currentHealthComponent = null;
             }
 
             healthBar.StopAllCoroutines();
         }
 
+        void OnBuildingCompleted(BuildingComponent building)
+        {
+            UpdateBuildingInfo();
+            UpdateButtonStates();
+        }
+        
         void OnSelectedLocaleChanged(Locale locale)
         {
             UpdateBuildingInfo();
@@ -99,8 +106,11 @@ namespace UI.Buildings
         
         private void UpdateHealBar(int currentHealth, int maxHealth)
         {
-            healthText.text = $"{currentHealth}/{maxHealth}";
-            healthBar.UpdateHealthBar(currentHealth, maxHealth);
+            if (currentHealthComponent)
+            {
+                healthText.text = $"{currentHealth}/{maxHealth}";
+                healthBar.UpdateHealthBar(currentHealth, maxHealth);
+            }
         }
 
         private void UpdateBuildingInfo()
@@ -127,7 +137,7 @@ namespace UI.Buildings
                 }
                 if (!currentBuilding.IsUpgradeable)
                 {
-                    upgradeTooltipTrigger.customTooltip = $"<color=red>{loc.GetGameText("tooltip.research_required")}</color>";
+                    upgradeTooltipTrigger.customTooltip = $"<color=red>{loc.GetGameText("building.require_full_health")}</color>";
                     upgradeButton.interactable = false;
                     return;
                 }
@@ -140,9 +150,11 @@ namespace UI.Buildings
 
                 upgradeTooltipTrigger.customTooltip = "";
                 upgradeButton.interactable = true;
+                upgradeTooltipTrigger.Hide();
             }
             else
             {
+                upgradeTooltipTrigger.Hide();
                 upgradeButton.gameObject.SetActive(false);
             }
         }
@@ -159,45 +171,15 @@ namespace UI.Buildings
             UpdateButtonStates();
         }
         
-        /// <summary>
-        /// 升级按钮回调
-        /// </summary>
         private void OnUpgradeClicked()
         {
             BuildingManager.Instance.UpgradeBuilding(currentBuilding);
-            UpdateBuildingInfo();
-            UpdateButtonStates();
-            if (upgradeButton.gameObject.activeSelf)
-            {
-                upgradeTooltipTrigger.RefreshTooltip();
-            }
-            currentHealthComponent = null;
         }
-        /// <summary>
-        /// 拆除按钮回调
-        /// </summary>
+
         private void OnDemolishClicked()
         {
             BuildingManager.Instance.DemolishBuilding(currentBuilding);
             Hide();
-        }
-        
-        private string GetResourceName(ResourceType resourceType)
-        {
-            return resourceType switch
-            {
-                ResourceType.Food => "食物",
-                ResourceType.Gold => "金币",
-                ResourceType.Knowledge => "学识",
-                _ => "未知"
-            };
-        }
-        /// <summary>
-        /// 外部调用，用于处理建筑点击
-        /// </summary>
-        public bool IsShowingBuilding(BuildingComponent building)
-        {
-            return currentBuilding == building && panelRoot.activeSelf;
         }
     }
 }

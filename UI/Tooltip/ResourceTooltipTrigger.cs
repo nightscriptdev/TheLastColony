@@ -8,7 +8,6 @@ namespace UI.Tooltip
 {
     public class ResourceTooltipTrigger : TooltipTrigger
     {
-        [Header("资源设置")]
         [SerializeField] private ResourceType resourceType;
 
         public override string GetTooltip()

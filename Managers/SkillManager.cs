@@ -8,9 +8,6 @@ using UnityEngine.EventSystems;
 
 namespace Managers
 {
-    /// <summary>
-    /// 技能管理器 - 管理技能释放、冷却、输入等
-    /// </summary>
     public class SkillManager : MonoSingleton<SkillManager>
     {
         [SerializeField] private List<SkillData> allSkills = new List<SkillData>();
@@ -21,17 +18,12 @@ namespace Managers
         
         [SerializeField] private Texture2D skillCursor;
         
-        // 技能冷却字典
         private Dictionary<SkillType, float> skillCooldowns = new Dictionary<SkillType, float>();
         
-        // 当前选中的技能
         private SkillData currentSelectedSkill = null;
         private bool isInSkillCastMode = false;
         
-        // 地图边界（用于限制技能释放范围）
         private Camera mainCamera;
-        private Vector2 mapMinBounds;
-        private Vector2 mapMaxBounds;
 
         protected override void Awake()
         {
@@ -58,9 +50,6 @@ namespace Managers
             skillCooldowns[SkillType.VoidVortex] = 0f;
         }
 
-        /// <summary>
-        /// 快捷键
-        /// </summary>
         private void HandleSkillInput()
         {
             if (Input.GetKeyDown(KeyCode.Q))
@@ -111,9 +100,6 @@ namespace Managers
             
         }
 
-        /// <summary>
-        /// 处理技能施放
-        /// </summary>
         private void HandleSkillCasting()
         {
             if (!isInSkillCastMode || currentSelectedSkill == null)
@@ -140,12 +126,6 @@ namespace Managers
             skillCooldowns[skillData.skillType] = skillData.cooldownTime;
 
             CreateSkillEffect(skillData, position);
-
-            // 播放音效
-            if (skillData.castSound != null)
-            {
-                // AudioManager.Instance.PlaySFX(skillData.castSound);
-            }
         }
 
         private void CreateSkillEffect(SkillData skillData, Vector3 position)
@@ -212,12 +192,5 @@ namespace Managers
         {
             return allSkills.Find(s => s.skillType == skillType);
         }
-
-        public SkillData GetCurrentSelectedSkill()
-        {
-            return currentSelectedSkill;
-        }
-
-        public bool IsInSkillCastMode => isInSkillCastMode;
     }
 }

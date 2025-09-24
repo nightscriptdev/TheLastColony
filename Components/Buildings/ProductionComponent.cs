@@ -6,9 +6,6 @@ using UnityEngine;
 
 namespace Components.Buildings
 {
-    /// <summary>
-    /// 资源生产建筑组件
-    /// </summary>
     public class ProductionComponent : MonoBehaviour, IInfoProvider
     {
         public BuildingComponent buildingComponent;
@@ -59,7 +56,6 @@ namespace Components.Buildings
 
             int finalAmount = ResourceManager.Instance.CalculateFinalProduction(buildingComponent.LevelData.BaseProduction);
 
-            // 添加资源
             switch (data.ResourceType)
             {
                 case ResourceType.Food:
@@ -73,35 +69,15 @@ namespace Components.Buildings
                     break;
             }
 
-            // 显示飘字提示
             ShowProductionFloatingText($"+{finalAmount}");
         }
         
         private void ShowProductionFloatingText(string text)
         {
             if (FloatingTextManager.Instance == null) return;
-            
-            Vector3 floatingTextPosition = transform.position + new Vector3(0, 0.7f, 0);
-            FloatingTextManager.Instance.ShowResourceProduction(text, floatingTextPosition);
+            FloatingTextManager.Instance.ShowResourceProduction(text, transform.position + new Vector3(0, 0.7f, 0));
         }
         
-        private string GetLocalizedResourceName(ResourceType resourceType)
-        {
-            // 这里可以根据语言设置返回不同的文本
-            // 暂时使用中文
-            switch (resourceType)
-            {
-                case ResourceType.Gold:
-                    return "金币";
-                case ResourceType.Knowledge:
-                    return "学识";
-                case ResourceType.Food:
-                    return "食物";
-                default:
-                    return resourceType.ToString();
-            }
-        }
-
         public string GetInfoText()
         {
             return LocalizationManager.Instance.GetLocalizedBuildingDescription(buildingComponent.Data.BuildingType) + "\n" + LocalizationManager.Instance.GetGameText("building.production", ResourceManager.Instance.CalculateFinalProduction(buildingComponent.LevelData.BaseProduction), buildingComponent.Data.ProductionInterval)+"\n" + LocalizationManager.Instance.GetGameText("building.daytime_only");

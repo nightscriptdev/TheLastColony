@@ -1,119 +1,138 @@
 ﻿using System.Collections.Generic;
+using Components;
+using UI;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace Core
 {
-    /// <summary>
-    /// 对象池管理器 - 管理所有的对象池
-    /// </summary>
     public class PoolingManager : MonoSingleton<PoolingManager>
     {
-        [Header("对象池设置")]
-        [SerializeField] private Transform poolParent;
+        public bool collectionCheck = false;
         
-        private Dictionary<string, object> pools = new Dictionary<string, object>();
+        public int poolSize = 5;
+        public int poolMaxSize = 20;
         
+        public int floatingTextPoolSize = 10;
+        public int floatingTextPoolMaxSize = 50;
+        
+        public int projectilePoolSize = 10;
+        public int projectilePoolMaxSize = 50;
+        
+        private Dictionary<GameObject, IObjectPool<GameObject>> pools = new ();
+        private Dictionary<GameObject, IObjectPool<GameObject>> instancePoolMap = new ();
+        
+        private Dictionary<FloatingText, IObjectPool<FloatingText>> floatingTextPools = new ();
+        private Dictionary<FloatingText, IObjectPool<FloatingText>> instanceFloatingTextMap = new ();
+        
+        private Dictionary<ProjectileComponent, IObjectPool<ProjectileComponent>> projectilePools = new ();
+        private Dictionary<ProjectileComponent, IObjectPool<ProjectileComponent>> instanceProjectileMap = new ();
+
+#if UNITY_EDITOR
         protected override void Awake()
         {
             base.Awake();
-            
-            // 创建对象池父对象
-            if (poolParent == null)
-            {
-                GameObject poolObj = new GameObject("ObjectPools");
-                poolObj.transform.SetParent(transform);
-                poolParent = poolObj.transform;
-            }
+            collectionCheck = true;
         }
+#endif
         
-        /// <summary>
-        /// 创建或获取对象池
-        /// </summary>
-        public ObjectPool<T> CreatePool<T>(
-            string poolName, 
-            T prefab, 
-            int defaultCapacity = 10, 
-            int maxSize = 100) where T : Component
+        public GameObject Get(GameObject prefab)
         {
-            if (pools.ContainsKey(poolName))
+            if (!pools.ContainsKey(prefab))
             {
-                return pools[poolName] as ObjectPool<T>;
+                var newPool = new ObjectPool<GameObject>(
+                    createFunc: () => Instantiate(prefab),
+                    actionOnGet: obj => obj.SetActive(true),
+                    actionOnRelease: obj => obj.SetActive(false),
+                    actionOnDestroy: obj => Destroy(obj),
+                    collectionCheck: collectionCheck,
+                    defaultCapacity: poolSize,
+                    maxSize: poolMaxSize
+                );
+                pools[prefab] = newPool;
             }
+
+            var instance = pools[prefab].Get();
+            instancePoolMap[instance] = pools[prefab];
             
-            // 为这个池创建专用父对象
-            GameObject poolContainer = new GameObject($"Pool_{poolName}");
-            poolContainer.transform.SetParent(poolParent);
-            
-            var pool = new ObjectPool<T>(
-                createFunc: () => {
-                    var obj = Instantiate(prefab, poolContainer.transform);
-                    obj.name = $"{poolName}_Instance";
-                    return obj;
-                },
-                onGet: (obj) => {
-                    obj.gameObject.SetActive(true);
-                },
-                onRelease: (obj) => {
-                    obj.gameObject.SetActive(false);
-                    obj.transform.SetParent(poolContainer.transform);
-                },
-                onDestroy: null,
-                collectionCheck: true,
-                defaultCapacity: defaultCapacity,
-                maxSize: maxSize
-            );
-            
-            pools[poolName] = pool;
-            return pool;
-        }
-        
-        /// <summary>
-        /// 获取已存在的对象池
-        /// </summary>
-        public ObjectPool<T> GetPool<T>(string poolName) where T : Component
-        {
-            if (pools.TryGetValue(poolName, out var pool))
-            {
-                return pool as ObjectPool<T>;
-            }
-            
-            Debug.LogWarning($"对象池 {poolName} 不存在");
-            return null;
-        }
-        
-        /// <summary>
-        /// 清理所有对象池
-        /// </summary>
-        public void ClearAllPools()
-        {
-            foreach (var pool in pools.Values)
-            {
-                if (pool is ObjectPool<Component> componentPool)
-                {
-                    componentPool.Clear();
-                }
-            }
-            pools.Clear();
-        }
-        
-        /// <summary>
-        /// 清理指定对象池
-        /// </summary>
-        public void ClearPool(string poolName)
-        {
-            if (pools.TryGetValue(poolName, out var pool))
-            {
-                if (pool is ObjectPool<Component> componentPool)
-                {
-                    componentPool.Clear();
-                }
-                pools.Remove(poolName);
-            }
+            return instance;
         }
 
-        private void OnDestroy()
+        public void Release(GameObject instance)
         {
-            ClearAllPools();
+            if (instancePoolMap.ContainsKey(instance))
+            {
+                instancePoolMap[instance].Release(instance);
+                instancePoolMap.Remove(instance);
+            }
+            else
+                Destroy(instance);
+        }
+        
+        public ProjectileComponent GetProjectile(ProjectileComponent prefab)
+        {
+            if (!projectilePools.ContainsKey(prefab))
+            {
+                var newPool = new ObjectPool<ProjectileComponent>(
+                    createFunc: () => Instantiate(prefab),
+                    actionOnGet: obj => obj.gameObject.SetActive(true),
+                    actionOnRelease: obj => obj.gameObject.SetActive(false),
+                    actionOnDestroy: obj => Destroy(obj),
+                    collectionCheck: collectionCheck,
+                    defaultCapacity: projectilePoolSize,
+                    maxSize: projectilePoolMaxSize
+                );
+                projectilePools[prefab] = newPool;
+            }
+
+            var instance = projectilePools[prefab].Get();
+            instanceProjectileMap[instance] = projectilePools[prefab];
+
+            return instance;
+        }
+        
+        public void ReleaseProjectile(ProjectileComponent instance)
+        {
+            if (instanceProjectileMap.ContainsKey(instance))
+            {
+                instanceProjectileMap[instance].Release(instance);
+                instanceProjectileMap.Remove(instance);
+            }
+            else
+                Destroy(instance.gameObject);
+        }
+        
+        public FloatingText GeFloatingText(FloatingText prefab)
+        {
+            if (!floatingTextPools.ContainsKey(prefab))
+            {
+                var newPool = new ObjectPool<FloatingText>(
+                    createFunc: () => Instantiate(prefab),
+                    actionOnGet: obj => obj.gameObject.SetActive(true),
+                    actionOnRelease: obj => obj.gameObject.SetActive(false),
+                    actionOnDestroy: obj => Destroy(obj),
+                    collectionCheck: collectionCheck,
+                    defaultCapacity: floatingTextPoolSize,
+                    maxSize: floatingTextPoolMaxSize
+                );
+                floatingTextPools[prefab] = newPool;
+            }
+
+            var instance = floatingTextPools[prefab].Get();
+            instanceFloatingTextMap[instance] = floatingTextPools[prefab];
+
+            return instance;
+        }
+        
+        public void ReleaseFloatingText(FloatingText instance)
+        {
+            if (instanceFloatingTextMap.ContainsKey(instance))
+            {
+                instanceFloatingTextMap[instance].Release(instance);
+                instanceFloatingTextMap.Remove(instance);
+            }
+            else
+                Destroy(instance.gameObject);
         }
     }
 }

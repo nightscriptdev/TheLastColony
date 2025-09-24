@@ -20,9 +20,6 @@ namespace UI
         public ResearchData research;
         private ResearchUI researchUI;
         
-        string knowledgeInfo = String.Empty;
-
-
         private void Awake()
         {
             LocalizationSettings.SelectedLocaleChanged += OnSelectedLocaleChanged;
@@ -46,7 +43,6 @@ namespace UI
         {
             researchUI = ui;
         
-            // 设置基本信息
             icon.sprite = research.icon;
             nameText.text = research.GetLocalizedResearchName();
             costText.text = research.knowledgeCost.ToString();
@@ -71,11 +67,9 @@ namespace UI
                 if (nowKnowledge >= research.knowledgeCost)
                 {
                     costText.color = Color.black;
-                    knowledgeInfo = String.Empty;
                 }
                 else
                 {
-                    knowledgeInfo = $"<color=red>{LocalizationManager.Instance.GetGameText("tooltip.knowledge.insufficient")}</color>";
                     costText.color = Color.red;    
                 }
             }
@@ -87,7 +81,6 @@ namespace UI
             
             if (research.prerequisite!=null && !ResearchManager.Instance.IsResearched(research.prerequisite))
                 tooltip += $"<color=red>{LocalizationManager.Instance.GetGameText("tooltip.prerequisite", research.prerequisite.GetLocalizedResearchName())}</color>\n";
-            //tooltip += knowledgeInfo;
             
             return tooltip;
         }

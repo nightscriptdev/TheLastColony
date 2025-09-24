@@ -10,7 +10,6 @@ namespace Game
 {
     public class EnemySpawner : MonoSingleton<EnemySpawner>
     {
-        [Header("敌人数据")]
         [SerializeField] private List<EnemyData> normalEnemyDataList = new List<EnemyData>();
         [SerializeField] private List<EnemyData> eliteEnemyDataList = new List<EnemyData>();
         
@@ -34,7 +33,6 @@ namespace Game
             public Vector2 max;
         }
         
-        // 运行时数据
         private List<EnemyData> currentNormalEnemies = new List<EnemyData>();
         private HashSet<EnemyData> usedNormalEnemies = new HashSet<EnemyData>();
         private EnemyData currentEliteEnemy;
@@ -45,7 +43,6 @@ namespace Game
         private float currentSpawnInterval;
         private float currentEliteChance;
         
-        // 激活的生成区域
         private List<SpawnZone> activeSpawnZones = new List<SpawnZone>();
         
         private void OnEnable()
@@ -60,9 +57,6 @@ namespace Game
             EventManager.OnDayStart -= OnDayStart;
         }
         
-        /// <summary>
-        /// 夜晚开始
-        /// </summary>
         private void OnNightStart(int day)
         {
             currentDay = day;
@@ -77,9 +71,6 @@ namespace Game
             spawnCoroutine = StartCoroutine(SpawnLoop());
         }
         
-        /// <summary>
-        /// 白天开始
-        /// </summary>
         private void OnDayStart(int day)
         {
             // 停止生成
@@ -90,12 +81,8 @@ namespace Game
             }
         }
         
-        /// <summary>
-        /// 更新生成参数
-        /// </summary>
         private void UpdateSpawnParameters()
         {
-            // 更新生成间隔
             currentSpawnInterval = Mathf.Max(minSpawnInterval, baseSpawnInterval - (currentDay - 1) * intervalDecreasePerDay);
             
             // 更新精英概率：初始5%，每天+1%，上限75%
@@ -107,13 +94,8 @@ namespace Game
             {
                 currentEliteChance = 0f;
             }
-            
-            Debug.Log($"第{currentDay}天夜晚 - 生成间隔: {currentSpawnInterval}秒, 精英概率: {currentEliteChance * 100}%");
         }
         
-        /// <summary>
-        /// 选择今晚出现的敌人
-        /// </summary>
         private void SelectEnemiesForTonight()
         {
             currentNormalEnemies.Clear();
@@ -143,9 +125,6 @@ namespace Game
             }
         }
         
-        /// <summary>
-        /// 随机选择普通敌人
-        /// </summary>
         private void SelectRandomNormalEnemies(int count)
         {
             // 移除已使用的敌人
@@ -174,18 +153,12 @@ namespace Game
             }
         }
         
-        /// <summary>
-        /// 替换一个普通敌人
-        /// </summary>
         private void ReplaceOneNormalEnemy()
         {
             if (currentNormalEnemies.Count == 0) return;
             
-            // 随机选择要替换的
             int replaceIndex = Random.Range(0, currentNormalEnemies.Count);
-            EnemyData toReplace = currentNormalEnemies[replaceIndex];
             
-            // 获取可用的新敌人
             List<EnemyData> availableEnemies = new List<EnemyData>();
             foreach (var enemyData in normalEnemyDataList)
             {
@@ -201,14 +174,10 @@ namespace Game
             }
         }
         
-        /// <summary>
-        /// 随机选择精英敌人
-        /// </summary>
         private void SelectRandomEliteEnemy()
         {
             List<EnemyData> availableEnemies = new List<EnemyData>();
             
-            // 移除已使用的敌人
             foreach (var enemyData in eliteEnemyDataList)
             {
                 if (usedEliteEnemies.Contains(enemyData)) continue;
@@ -229,14 +198,10 @@ namespace Game
             }
         }
         
-        /// <summary>
-        /// 生成循环
-        /// </summary>
         private IEnumerator SpawnLoop()
         {
             while (true)
             {
-                // 检查是否达到最大数量
                 if (EnemyManager.Instance.Enemies.Count < maxEnemyCount)
                 {
                     SpawnEnemy();
@@ -245,12 +210,8 @@ namespace Game
             }
         }
         
-        /// <summary>
-        /// 生成单个敌人
-        /// </summary>
         private void SpawnEnemy()
         {
-            // 决定生成普通还是精英
             bool spawnElite = Random.value < currentEliteChance && currentEliteEnemy != null;
             
             EnemyData enemyToSpawn;
@@ -267,10 +228,8 @@ namespace Game
                 return;
             }
             
-            // 获取生成位置
             Vector3 spawnPosition = GetRandomSpawnPosition();
             
-            // 生成敌人
             if (enemyToSpawn.enemyPrefab != null)
             {
                 GameObject enemyGO = Instantiate(enemyToSpawn.enemyPrefab, spawnPosition, Quaternion.identity, transform);
@@ -280,9 +239,6 @@ namespace Game
             }
         }
         
-        /// <summary>
-        /// 生成生成区域
-        /// </summary>
         private void GenerateSpawnZones()
         {
             activeSpawnZones.Clear();
@@ -298,14 +254,9 @@ namespace Game
             }
         }
         
-        /// <summary>
-        /// 获取随机生成位置
-        /// </summary>
         private Vector3 GetRandomSpawnPosition()
         {
-            // 从激活的生成区域中随机选择
             SpawnZone zone = activeSpawnZones[Random.Range(0, activeSpawnZones.Count)];
-            // 在区域内随机位置
             Vector3 spawnPos = new Vector3(Random.Range(zone.min.x, zone.max.x), Random.Range(zone.min.y, zone.max.y), 0);
             return spawnPos;
         }

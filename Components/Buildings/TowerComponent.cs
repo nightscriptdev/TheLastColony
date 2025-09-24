@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using Components.Enemies;
+using System.Text;
+using Core;
 using Data.Buildings;
 using Enums;
 using Interface;
@@ -9,32 +10,23 @@ using Managers;
 
 namespace Components.Buildings
 {
-    /// <summary>
-    /// 魔法塔战斗组件
-    /// </summary>
     public class TowerComponent : MonoBehaviour, IInfoProvider
     {
-        [Header("攻击设置")] [SerializeField] private Transform firePoint; // 发射点
-        [Header("子弹预制体")] [SerializeField] private GameObject projectilePrefab; // 子弹
-        [Header("范围显示")] [SerializeField] private GameObject rangeIndicator; // 攻击范围指示器
+        [SerializeField] private Transform firePoint;
+        [SerializeField] private ProjectileComponent projectilePrefab;
+        [SerializeField] private GameObject pulseLinePrefab;
+        [SerializeField] private GameObject rangeIndicator;
         [SerializeField] private GameObject impactEffect;
-
+        [SerializeField] private AttackRangeTrigger attackRangeTrigger;
         
-        //[SerializeField] private GameObject beamEffect;
         private BuildingComponent buildingComponent;
         private Coroutine attackCoroutine;
-        private List<Transform> enemiesInRange = new List<Transform>();
-
         private void Awake()
         {
             buildingComponent = GetComponent<BuildingComponent>();
-            buildingComponent.InfoProvider = this;
-            
-            // 如果没有设置发射点，使用建筑本身的位置
             if (firePoint == null)
                 firePoint = transform;
-
-            if(rangeIndicator != null)
+            if(rangeIndicator)
                 rangeIndicator.SetActive(false);
         }
 
@@ -58,12 +50,13 @@ namespace Components.Buildings
 
         private void StartAttacking(BuildingComponent building)
         {
+            UpdateAttackRange();
             if (attackCoroutine == null)
             {
                 attackCoroutine = StartCoroutine(AttackLoop());
             }
         }
-
+        
         private void StopAttacking(BuildingComponent building)
         {
             if (attackCoroutine != null)
@@ -77,100 +70,77 @@ namespace Components.Buildings
         {
             while (true)
             {
-                yield return new WaitForSeconds(buildingComponent.LevelData.AttackInterval);
-                AttackNearestEnemy();
+                yield return null;
+                while (attackRangeTrigger.enemiesInRange.Count > 0)
+                {
+                    AttackNearestEnemyInRange();
+                    yield return new WaitForSeconds(buildingComponent.LevelData.AttackInterval);
+                }
             }
         }
-
-        private void AttackNearestEnemy()
+        
+        private void AttackNearestEnemyInRange()
         {
-            EnemyComponent enemy = EnemyManager.Instance.GetNearestEnemy(transform.position);
-            if (enemy == null) return;
+            var nearestEnemy = attackRangeTrigger.GetNearestEnemyInRange();
+            if (!nearestEnemy) return;
+            
             var levelData = buildingComponent.LevelData;
-            if (Vector2.Distance(enemy.center.position, transform.position) > levelData.AttackRange) return;
             int damage = buildingComponent.Data.GetRandomDamage(buildingComponent.Level);
             switch (levelData.AttackType)
             {
                 case TowerAttackType.Single:
-                    SingleTargetAttack(enemy.center, damage, levelData);
+                    SingleTargetAttack(nearestEnemy.center, damage, levelData);
                     break;
                 case TowerAttackType.Scatter:
-                    ScatterAttack(enemy.center, damage, levelData);
+                    ScatterAttack(nearestEnemy.center, damage, levelData);
                     break;
                 case TowerAttackType.Piercing:
-                    PiercingAttack(enemy.center, damage, levelData);
+                    PiercingAttack(nearestEnemy.center, damage, levelData);
                     break;
                 case TowerAttackType.Area:
-                    BeamAttack(enemy.center, damage, levelData);
+                    BeamAttack(nearestEnemy.center, damage, levelData);
                     break;
             }
         }
 
         private void SingleTargetAttack(Transform target, int damage, BuildingData.LevelData levelData)
         {
-            if (projectilePrefab != null)
-            {
-                // 发射单个子弹
-                var projectile = Instantiate(projectilePrefab, firePoint.position, Quaternion.FromToRotation(Vector3.right, target.position - firePoint.position));
-                var projectileScript = projectile.GetComponent<ProjectileComponent>();
-                if (projectileScript != null)
-                {
-                    projectileScript.Initialize(damage, levelData.HasSlowEffect);
-                    //projectileScript.Initialize(target, damage, levelData.HasSlowEffect);
-                }
-            }
-            else
-            {
-                // 直接造成伤害（如果没有子弹预制体）
-            }
+            var projectile = PoolingManager.Instance.GetProjectile(projectilePrefab);
+            projectile.transform.SetPositionAndRotation(firePoint.position, Quaternion.FromToRotation(Vector3.right, target.position - firePoint.position));
+            projectile.Initialize(damage, levelData.HasSlowEffect);
         }
 
         private void ScatterAttack(Transform target, int damage, BuildingData.LevelData levelData)
         {
-            if (projectilePrefab != null)
+            int shotCount = levelData.MultiShotCount;
+            float angleStep = 15f;
+            float startAngle = -(angleStep * (shotCount - 1)) / 2f;
+    
+            Vector3 baseDirection = (target.position - firePoint.position).normalized;
+    
+            for (int i = 0; i < shotCount; i++)
             {
-                int shotCount = levelData.MultiShotCount;
-                float angleStep = 15f;
-                float startAngle = -(angleStep * (shotCount - 1)) / 2f;
+                float angle = startAngle + angleStep * i;
+                Vector3 direction = Quaternion.AngleAxis(angle, Vector3.forward) * baseDirection;
+                Quaternion rotation = Quaternion.FromToRotation(Vector3.right, direction);
         
-                Vector3 baseDirection = (target.position - firePoint.position).normalized;
-        
-                for (int i = 0; i < shotCount; i++)
-                {
-                    float angle = startAngle + angleStep * i;
-                    // 使用AngleAxis更清晰
-                    Vector3 direction = Quaternion.AngleAxis(angle, Vector3.forward) * baseDirection;
-            
-                    Quaternion rotation = Quaternion.FromToRotation(Vector3.right, direction);
-            
-                    var projectile = Instantiate(projectilePrefab, firePoint.position, rotation);
-                    var projectileScript = projectile.GetComponent<ProjectileComponent>();
-                    projectileScript?.Initialize(damage, levelData.HasSlowEffect);
-                }
+                var projectile = PoolingManager.Instance.GetProjectile(projectilePrefab);
+                projectile.transform.SetPositionAndRotation(firePoint.position, rotation);
+                projectile.Initialize(damage, levelData.HasSlowEffect);
             }
         }
 
-
-
         private void PiercingAttack(Transform target, int damage, BuildingData.LevelData levelData)
         {
-            if (projectilePrefab != null)
-            {
-                var projectile = Instantiate(projectilePrefab, firePoint.position, Quaternion.FromToRotation(Vector3.right, target.position - firePoint.position));
-                var projectileScript = projectile.GetComponent<ProjectileComponent>();
-                if (projectileScript != null)
-                {
-                    projectileScript.Initialize(damage, levelData.HasSlowEffect, levelData.PierceCount);
-                }
-            }
+            var projectile = PoolingManager.Instance.GetProjectile(projectilePrefab);
+            projectile.transform.SetPositionAndRotation(firePoint.position, Quaternion.FromToRotation(Vector3.right, target.position - firePoint.position));
+            projectile.Initialize(damage, levelData.HasSlowEffect, levelData.PierceCount);
         }
 
         private void BeamAttack(Transform target, int damage, BuildingData.LevelData levelData)
         {
-            // 执行单次射线攻击
             PerformSingleBeamAttack(target, damage, levelData);
     
-            // 处理连击
             if (levelData.ConsecutiveAttacks > 1)
             {
                 StartCoroutine(ConsecutiveBeamAttack(target, damage, levelData.ConsecutiveAttacks - 1));
@@ -180,12 +150,11 @@ namespace Components.Buildings
         private void PerformSingleBeamAttack(Transform target, int damage, BuildingData.LevelData levelData)
         {
             Vector2 direction = (target.position - firePoint.position).normalized;
-            float range = levelData.AttackRange;
-
+            float range = levelData.AttackRaidus;
             RaycastHit2D[] hits = Physics2D.RaycastAll(
                 firePoint.position,
                 direction,
-                range,
+                range+0.03f,
                 EnemyManager.Instance.EnemyLayerMask
             );
             
@@ -193,15 +162,14 @@ namespace Components.Buildings
             {
                 hit.collider.GetComponent<HealthComponent>().TakeDamage(damage);
                 
-                if (impactEffect != null)
+                if (impactEffect)
                 {
-                    var obj = Instantiate(impactEffect, hit.point, Quaternion.identity);
-                    Destroy(obj, 0.208f); 
+                    PoolingManager.Instance.Get(impactEffect).transform.SetPositionAndRotation(hit.point, Quaternion.identity);
                 }
             }
     
             Quaternion beamRotation = Quaternion.FromToRotation(Vector3.right, direction);
-            Destroy(Instantiate(projectilePrefab, firePoint.position, beamRotation), 0.333f);
+            PoolingManager.Instance.Get(pulseLinePrefab).transform.SetPositionAndRotation(firePoint.position, beamRotation);
         }
 
         private IEnumerator ConsecutiveBeamAttack(Transform target, int damage, int remainingAttacks)
@@ -210,61 +178,72 @@ namespace Components.Buildings
     
             for (int i = 0; i < remainingAttacks; i++)
             {
-                if (target != null)
-                {
-                    // 只执行单次攻击，不触发新的连击
-                    PerformSingleBeamAttack(target, damage, buildingComponent.LevelData);
-                    if (i < remainingAttacks - 1)
-                        yield return new WaitForSeconds(0.3f);
-                }
+                if (!target) yield break;
+
+                PerformSingleBeamAttack(target, damage, buildingComponent.LevelData);
+                if (i < remainingAttacks - 1)
+                    yield return new WaitForSeconds(0.3f);
             }
         }
 
-
-        /// <summary>
-        /// 显示攻击范围
-        /// </summary>
+        void UpdateAttackRange()
+        {
+            float range = buildingComponent.LevelData.AttackRaidus;
+            attackRangeTrigger.collider2D.radius = range;
+            range *= 2;
+            rangeIndicator.transform.localScale = new Vector3(range, range, range);
+        }
+        
         public void ShowRange()
         {
-            if (rangeIndicator != null)
-            {
-                rangeIndicator.SetActive(true);
-
-                // 设置范围大小
-                float range = buildingComponent.LevelData.AttackRange;
-                rangeIndicator.transform.localScale = Vector3.one * range * 2; // 直径
-            }
+            rangeIndicator.SetActive(true);
         }
 
-        /// <summary>
-        /// 隐藏攻击范围
-        /// </summary>
         public void HideRange()
         {
-            if (rangeIndicator != null)
-            {
-                rangeIndicator.SetActive(false);
-            }
+            rangeIndicator.SetActive(false);
         }
-
 
         public string GetInfoText()
         {
             var loc = LocalizationManager.Instance;
-            string info = $"{loc.GetGameText("combat.damage")} {buildingComponent.LevelData.MinDamage}-{buildingComponent.LevelData.MaxDamage}\n";
-            info += $"{loc.GetGameText("combat.range", buildingComponent.LevelData.AttackRange)}\n";
-            info += $"{loc.GetGameText("combat.attack_speed", buildingComponent.LevelData.AttackInterval)}\n";
-            var effects = new List<string>();
-            if (buildingComponent.LevelData.HasSlowEffect)
-                effects.Add(loc.GetGameText("combat.effect.slow"));
-            if (buildingComponent.LevelData.PierceCount > 1)
-                effects.Add(loc.GetGameText("combat.effect.pierce", buildingComponent.LevelData.PierceCount));
-            if (buildingComponent.LevelData.MultiShotCount > 1)
-                effects.Add(loc.GetGameText("combat.effect.multishot", buildingComponent.LevelData.MultiShotCount));
-            if (buildingComponent.LevelData.ConsecutiveAttacks > 1)
-                effects.Add(loc.GetGameText("combat.effect.consecutive", buildingComponent.LevelData.ConsecutiveAttacks));
+            var levelData = buildingComponent.LevelData;
+            var sb = new StringBuilder();
 
-            return info + (effects.Count > 0 ? "\n" + string.Join("\n", effects) : "");
+            sb.AppendLine($"{loc.GetGameText("combat.damage")} {levelData.MinDamage}-{levelData.MaxDamage}");
+            sb.AppendLine(loc.GetGameText("combat.range", levelData.AttackRaidus));
+            sb.AppendLine(loc.GetGameText("combat.attack_speed", levelData.AttackInterval));
+
+            var effects = GetEffects(loc, levelData);
+            if (effects.Count > 0)
+            {
+                sb.AppendLine();
+                foreach (var effect in effects)
+                {
+                    sb.AppendLine(effect);
+                }
+            }
+
+            return sb.ToString().TrimEnd('\n', '\r');
+        }
+
+        private List<string> GetEffects(LocalizationManager loc, BuildingData.LevelData levelData)
+        {
+            var effects = new List<string>();
+    
+            if (levelData.HasSlowEffect)
+                effects.Add(loc.GetGameText("combat.effect.slow"));
+    
+            if (levelData.PierceCount > 1)
+                effects.Add(loc.GetGameText("combat.effect.pierce", levelData.PierceCount));
+    
+            if (levelData.MultiShotCount > 1)
+                effects.Add(loc.GetGameText("combat.effect.multishot", levelData.MultiShotCount));
+    
+            if (levelData.ConsecutiveAttacks > 1)
+                effects.Add(loc.GetGameText("combat.effect.consecutive", levelData.ConsecutiveAttacks));
+    
+            return effects;
         }
     }
 }

@@ -1,13 +1,9 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
 using Core;
 using Data;
 using Data.Buildings;
-using Enums;
 using Managers;
-using Unity.VisualScripting;
 
 namespace UI.Buildings
 {

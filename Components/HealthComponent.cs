@@ -3,23 +3,16 @@ using System;
 
 namespace Components
 {
-    /// <summary>
-    /// HP系统纯数据/逻辑组件 - 用于所有可被攻击的实体
-    /// 遵循单一职责原则，不包含任何UI逻辑
-    /// </summary>
     public class HealthComponent : MonoBehaviour
     {
-        [Header("生命值设置")]
         [SerializeField] private int maxHP = 100;
         private int currentHP;
 
-        // 事件：这是与外部系统（如UI、音效、动画）沟通的桥梁
         public event Action<int, int> OnHealthChanged; // (currentHP, maxHP)
         public event Action<int> OnTakeDamage;       // (damageAmount)
         public event Action OnDeath;
         public event Action OnHealthFull;
 
-        // 状态
         public bool IsAlive => currentHP > 0;
         public bool IsFullHealth => currentHP >= maxHP;
         public int CurrentHP => currentHP;

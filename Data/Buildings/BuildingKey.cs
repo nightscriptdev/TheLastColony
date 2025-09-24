@@ -36,7 +36,6 @@ namespace Data.Buildings
             return $"{Type}_Level{Level}";
         }
     
-        // 便捷的操作符重载
         public static bool operator ==(BuildingKey left, BuildingKey right)
         {
             return left.Equals(right);

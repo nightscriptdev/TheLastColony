@@ -1,6 +1,4 @@
-using Components.Enemies;
 using Enums;
-using Managers;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;

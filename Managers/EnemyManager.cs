@@ -26,23 +26,5 @@ namespace Managers
         {
             Enemies.Remove(enemyComponent);
         }
-
-        public EnemyComponent GetNearestEnemy(Vector2 originPosition)
-        {
-            EnemyComponent nearest = null;
-            float nearestDistance = float.MaxValue;
-            
-            foreach (var enemy in Enemies)
-            {
-                float distance = Vector2.Distance(originPosition, enemy.transform.position);
-                if (distance < nearestDistance)
-                {
-                    nearestDistance = distance;
-                    nearest = enemy;
-                }
-            }
-
-            return nearest;
-        }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using TMPro;
 using UnityEngine;
-using System.Collections;
 using Core;
 using UnityEngine.UI;
 
@@ -8,7 +7,6 @@ namespace UI
 {
     public class TooltipManager : MonoSingleton<TooltipManager>
     {
-        [Header("UI组件")]
         [SerializeField] private GameObject tooltip;
         [SerializeField] private TextMeshProUGUI tooltipText;
         
@@ -62,7 +60,6 @@ namespace UI
                 tooltipText.text = content;
                 tooltip.SetActive(true);
 
-                // 在显示的第一帧就强制更新布局和位置，避免闪烁
                 LayoutRebuilder.ForceRebuildLayoutImmediate(tooltipRectTransform);
                 PositionTooltip();
             }
@@ -85,7 +82,6 @@ namespace UI
 
             tooltipRectTransform.pivot = pivot;
 
-            // 计算偏移
             Vector2 offset = new Vector2(pivot.x == 1 ? -padding.x : padding.x,
                 pivot.y == 0 ? padding.y : -padding.y);
 
