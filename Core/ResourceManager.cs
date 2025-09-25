@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace Core
@@ -10,24 +9,62 @@ namespace Core
         [SerializeField] private int initialGold = 100;
         [SerializeField] private int initialKnowledge = 25;
     
-        private int _currentPopulation;
-        public int CurrentPopulation 
+        private int _population;
+        public int Population 
         {
-            get => _currentPopulation;
-            set 
+            get => _population;
+            set
             {
-                if (_currentPopulation != value)
-                {
-                    _currentPopulation = value;
-                    EventManager.OnPopulationChanged?.Invoke(value);
-                }
+                if (_population == value) return;
+                _population = value;
+                EventManager.OnPopulationChanged?.Invoke();
             }
         }
-        private int currentFood;
-        private int currentGold;
-        private int currentKnowledge;
+        private int _food;
+        public int Food 
+        {
+            get => _food;
+            set
+            {
+                if (_food == value) return;
+                _food = value;
+                EventManager.OnFoodChanged?.Invoke();
+            }
+        }
+        private int _gold;
+        public int Gold 
+        {
+            get => _gold;
+            set
+            {
+                if (_gold == value) return;
+                _gold = value;
+                EventManager.OnGoldChanged?.Invoke();
+            }
+        }
+        private int _knowledge;
+        public int Knowledge 
+        {
+            get => _knowledge;
+            set
+            {
+                if (_knowledge == value) return;
+                _knowledge = value;
+                EventManager.OnKnowledgeChanged?.Invoke();
+            }
+        }
     
-        private int maxPopulation;
+        private int _maxPopulation;
+        public int MaxPopulation 
+        {
+            get => _maxPopulation;
+            set
+            {
+                if (_maxPopulation == value) return;
+                _maxPopulation = value;
+                EventManager.OnMaxPopulationChanged?.Invoke();
+            }
+        }
     
         void OnEnable()
         {
@@ -44,8 +81,40 @@ namespace Core
         {
             if (Input.GetKeyDown(KeyCode.A))
             {
-                AddGold(20);
-                AddKnowledge(20);
+                Population += 10;
+            }
+            else if (Input.GetKeyDown(KeyCode.S))
+            {
+                Food += 10;
+            }
+            else if (Input.GetKeyDown(KeyCode.D))
+            {
+                Gold += 1000;
+            }
+            else if (Input.GetKeyDown(KeyCode.F))
+            {
+                Knowledge += 100;
+            }
+            if (Input.GetKeyDown(KeyCode.Z))
+            {
+                Population -= 10;
+            }
+            else if (Input.GetKeyDown(KeyCode.X))
+            {
+                Food -= 10;
+            }
+            else if (Input.GetKeyDown(KeyCode.C))
+            {
+                Gold -= 1000;
+            }
+            else if (Input.GetKeyDown(KeyCode.V))
+            {
+                Knowledge -= 100;
+            }
+            else if (Input.GetKeyDown(KeyCode.K))
+            {
+                GameManager.Instance.CurrentDay = 21;
+                GameManager.Instance.KillCount = 701;
             }
         }
 //#endif
@@ -55,25 +124,21 @@ namespace Core
         /// </summary>
         public void InitializeResources()
         {
-            CurrentPopulation = initialPopulation;
-            currentFood = initialFood;
-            currentGold = initialGold;
-            currentKnowledge = initialKnowledge;
-        
-            EventManager.OnFoodChanged?.Invoke(currentFood);
-            EventManager.OnGoldChanged?.Invoke(currentGold);
-            EventManager.OnKnowledgeChanged?.Invoke(currentKnowledge);
+            Population = initialPopulation;
+            Food = initialFood;
+            Gold = initialGold;
+            Knowledge = initialKnowledge;
         }
         
         public void IncreaseMaxPopulation(int amount)
         {
-            maxPopulation += amount;
+            MaxPopulation += amount;
         }
 
         public void DecreaseMaxPopulation(int amount)
         {
-            maxPopulation = Mathf.Max(0, maxPopulation - amount);
-            if(maxPopulation < CurrentPopulation) CurrentPopulation = maxPopulation;
+            MaxPopulation = Mathf.Max(0, _maxPopulation - amount);
+            if(_maxPopulation < Population) Population = _maxPopulation;
         }
 
         private void OnDayStart(int day)
@@ -84,54 +149,30 @@ namespace Core
 
         private void IncreasePopulation()
         {
-            if(CurrentPopulation < maxPopulation && currentFood > CurrentPopulation) CurrentPopulation++;
+            if(Population < _maxPopulation && _food > Population) Population++;
         }
         
         private void ConsumeDailyFood()
         {
-            int foodNeeded = CurrentPopulation;
+            int foodNeeded = Population;
         
-            if (currentFood >= foodNeeded)
+            if (Food >= foodNeeded)
             {
-                currentFood -= foodNeeded;
-                EventManager.OnFoodChanged?.Invoke(currentFood);
+                Food -= foodNeeded;
             }
             else
             {
-                int populationLoss = foodNeeded - currentFood;
-                currentFood = 0;
-            
-                CurrentPopulation = Mathf.Max(0, CurrentPopulation - populationLoss);
-            
-                EventManager.OnFoodChanged?.Invoke(currentFood);
+                int populationLoss = foodNeeded - Food;
+                Food = 0;
+                Population = Mathf.Max(0, Population - populationLoss);
             }
-        }
-    
-    
-        public void AddFood(int amount)
-        {
-            currentFood += amount;
-            EventManager.OnFoodChanged?.Invoke(currentFood);
-        }
-    
-        public void AddGold(int amount)
-        {
-            currentGold += amount;
-            EventManager.OnGoldChanged?.Invoke(currentGold);
-        }
-    
-        public void AddKnowledge(int amount)
-        {
-            currentKnowledge += amount;
-            EventManager.OnKnowledgeChanged?.Invoke(currentKnowledge);
         }
     
         public bool SpendGold(int amount)
         {
-            if (currentGold >= amount)
+            if (Gold >= amount)
             {
-                currentGold -= amount;
-                EventManager.OnGoldChanged?.Invoke(currentGold);
+                Gold -= amount;
                 return true;
             }
             return false;
@@ -139,28 +180,21 @@ namespace Core
     
         public bool SpendKnowledge(int amount)
         {
-            if (currentKnowledge >= amount)
+            if (Knowledge >= amount)
             {
-                currentKnowledge -= amount;
-                EventManager.OnKnowledgeChanged?.Invoke(currentKnowledge);
+                Knowledge -= amount;
                 return true;
             }
             return false;
         }
     
-        public bool HasEnoughGold(int amount) => currentGold >= amount;
-        public bool HasEnoughKnowledge(int amount) => currentKnowledge >= amount;
-    
-        public int Population => CurrentPopulation;
-        public int Food => currentFood;
-        public int Gold => currentGold;
-        public int Knowledge => currentKnowledge;
-        public int MaxPopulation => maxPopulation;
+        public bool HasEnoughGold(int amount) => _gold >= amount;
+        public bool HasEnoughKnowledge(int amount) => _knowledge >= amount;
     
         public int CalculateFinalProduction(int baseAmount)
         {
             // 人口影响公式
-            return Mathf.RoundToInt(baseAmount * (1 + CurrentPopulation * 0.02f));
+            return Mathf.RoundToInt(baseAmount * (1 + Population * 0.02f));
         }
     }
 }

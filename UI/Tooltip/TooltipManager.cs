@@ -28,34 +28,24 @@ namespace UI
 
         private void Update()
         {
-            if (tooltip != null && tooltip.activeSelf)
+            if (tooltip && tooltip.activeSelf)
             {
                 PositionTooltip();
             }
         }
         
-        public void Show(string content)
-        {
-            if (string.IsNullOrEmpty(content))
-            {
-                Hide();
-                return;
-            }
-            ShowTooltip(content);
-        }
-
         public void Hide()
         {
-            if (tooltip != null && tooltip.activeSelf)
+            if (tooltip && tooltip.activeSelf)
             {
                 tooltip.SetActive(false);
             }
         }
         
 
-        private void ShowTooltip(string content)
+        public void ShowTooltip(string content)
         {
-            if (tooltipText != null)
+            if (tooltipText)
             {
                 tooltipText.text = content;
                 tooltip.SetActive(true);

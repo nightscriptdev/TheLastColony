@@ -41,9 +41,16 @@ namespace Components.Buildings
         {
             EnemyComponent nearestEnemy = null;
             float minDistance = float.MaxValue;
-
-            for (var i = 0; i < enemiesInRange.Count; i++)
+            
+            // 倒序遍历 安全移除
+            for (int i = enemiesInRange.Count - 1; i >= 0; i--)
             {
+                if (!enemiesInRange[i])
+                {
+                    enemiesInRange.RemoveAt(i);
+                    continue;
+                }
+                
                 float distance = Vector2.Distance(transform.position, enemiesInRange[i].transform.position);
                 if (distance < minDistance)
                 {

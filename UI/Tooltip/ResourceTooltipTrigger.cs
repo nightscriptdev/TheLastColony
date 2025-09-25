@@ -10,6 +10,49 @@ namespace UI.Tooltip
     {
         [SerializeField] private ResourceType resourceType;
 
+        private void OnEnable()
+        {
+            switch (resourceType)
+            {
+                case ResourceType.Population:
+                    EventManager.OnMaxPopulationChanged += RefreshTooltipIfVisible;               
+                    EventManager.OnPopulationChanged += RefreshTooltipIfVisible;               
+                    break;
+                case ResourceType.Food:
+                    EventManager.OnPopulationChanged += RefreshTooltipIfVisible;               
+                    EventManager.OnFoodChanged += RefreshTooltipIfVisible;        
+                    break;
+                case ResourceType.Gold:
+                    EventManager.OnGoldChanged += RefreshTooltipIfVisible;               
+                    break;
+                case ResourceType.Knowledge:
+                    EventManager.OnKnowledgeChanged += RefreshTooltipIfVisible;               
+                    break;
+            }
+        }
+
+        protected override void OnDisable()
+        {
+            base.OnDisable();
+            switch (resourceType)
+            {
+                case ResourceType.Population:
+                    EventManager.OnMaxPopulationChanged -= RefreshTooltipIfVisible;               
+                    EventManager.OnPopulationChanged -= RefreshTooltipIfVisible;               
+                    break;
+                case ResourceType.Food:
+                    EventManager.OnPopulationChanged -= RefreshTooltipIfVisible;               
+                    EventManager.OnFoodChanged -= RefreshTooltipIfVisible;        
+                    break;
+                case ResourceType.Gold:
+                    EventManager.OnGoldChanged -= RefreshTooltipIfVisible;               
+                    break;
+                case ResourceType.Knowledge:
+                    EventManager.OnKnowledgeChanged -= RefreshTooltipIfVisible;               
+                    break;
+            }
+        }
+
         public override string GetTooltip()
         {
             switch (resourceType)

@@ -37,7 +37,7 @@ namespace UI
             EventManager.OnKnowledgeChanged += RefreshResearchButtons;
             
             researchPanel.SetActive(true);
-            RefreshResearchButtons(ResourceManager.Instance.Knowledge);
+            RefreshResearchButtons();
         }
 
         public void ClosePanel()
@@ -47,11 +47,11 @@ namespace UI
             researchPanel.SetActive(false);
         }
     
-        void RefreshResearchButtons(int nowKnowledge)
+        void RefreshResearchButtons()
         {
             foreach (var button in researchButtons)
             {
-                button.RefreshState(nowKnowledge);
+                button.RefreshState();
             }
         }
     
@@ -59,7 +59,7 @@ namespace UI
         {
             if (ResearchManager.Instance.DoResearch(research))
             {
-                RefreshResearchButtons(ResourceManager.Instance.Knowledge);
+                RefreshResearchButtons();
             }
         }
     }

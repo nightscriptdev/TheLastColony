@@ -15,7 +15,12 @@ namespace Components
         private bool hasSlowEffect;
         private int pierceCount = 1;
         private int currentPierces = 0;
-        
+
+        private void Update()
+        {
+            MoveInDirection();
+        }
+
         public void Initialize(int damage, bool hasSlowEffect = false, int pierceCount = 1)
         {
             this.damage = damage;
@@ -26,10 +31,7 @@ namespace Components
             if (duration > 0f)
                 Invoke(nameof(Release), duration);
         }
-        private void Update()
-        {
-            MoveInDirection();
-        }
+        
         private void MoveInDirection()
         {
             transform.position += transform.right * speed * Time.deltaTime;
@@ -58,7 +60,6 @@ namespace Components
         }
         void Release()
         {
-            if (!gameObject) return;
             CancelInvoke();
             PoolingManager.Instance.ReleaseProjectile(this);
         }

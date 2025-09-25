@@ -44,7 +44,11 @@ namespace Core
                     createFunc: () => Instantiate(prefab),
                     actionOnGet: obj => obj.SetActive(true),
                     actionOnRelease: obj => obj.SetActive(false),
-                    actionOnDestroy: obj => Destroy(obj),
+                    actionOnDestroy: obj =>
+                    {
+                        instancePoolMap.Remove(obj);
+                        Destroy(obj);
+                    },
                     collectionCheck: collectionCheck,
                     defaultCapacity: poolSize,
                     maxSize: poolMaxSize
@@ -65,8 +69,6 @@ namespace Core
                 instancePoolMap[instance].Release(instance);
                 instancePoolMap.Remove(instance);
             }
-            else
-                Destroy(instance);
         }
         
         public ProjectileComponent GetProjectile(ProjectileComponent prefab)
@@ -77,7 +79,11 @@ namespace Core
                     createFunc: () => Instantiate(prefab),
                     actionOnGet: obj => obj.gameObject.SetActive(true),
                     actionOnRelease: obj => obj.gameObject.SetActive(false),
-                    actionOnDestroy: obj => Destroy(obj),
+                    actionOnDestroy: obj =>
+                    {
+                        instanceProjectileMap.Remove(obj);
+                        Destroy(obj.gameObject);
+                    },
                     collectionCheck: collectionCheck,
                     defaultCapacity: projectilePoolSize,
                     maxSize: projectilePoolMaxSize
@@ -87,7 +93,7 @@ namespace Core
 
             var instance = projectilePools[prefab].Get();
             instanceProjectileMap[instance] = projectilePools[prefab];
-
+            
             return instance;
         }
         
@@ -98,8 +104,6 @@ namespace Core
                 instanceProjectileMap[instance].Release(instance);
                 instanceProjectileMap.Remove(instance);
             }
-            else
-                Destroy(instance.gameObject);
         }
         
         public FloatingText GeFloatingText(FloatingText prefab)
@@ -110,7 +114,11 @@ namespace Core
                     createFunc: () => Instantiate(prefab),
                     actionOnGet: obj => obj.gameObject.SetActive(true),
                     actionOnRelease: obj => obj.gameObject.SetActive(false),
-                    actionOnDestroy: obj => Destroy(obj),
+                    actionOnDestroy: obj =>
+                    {
+                        instanceFloatingTextMap.Remove(obj);
+                        Destroy(obj.gameObject);
+                    },
                     collectionCheck: collectionCheck,
                     defaultCapacity: floatingTextPoolSize,
                     maxSize: floatingTextPoolMaxSize
@@ -131,8 +139,6 @@ namespace Core
                 instanceFloatingTextMap[instance].Release(instance);
                 instanceFloatingTextMap.Remove(instance);
             }
-            else
-                Destroy(instance.gameObject);
         }
     }
 }

@@ -23,10 +23,11 @@ namespace Core
         
         public static Action<float> OnTimeScaleChanged; // 参数：新的时间倍速
     
-        public static Action<int> OnPopulationChanged;  // 参数：新的人口数
-        public static Action<int> OnFoodChanged;        // 参数：新的食物数
-        public static Action<int> OnGoldChanged;        // 参数：新的金币数
-        public static Action<int> OnKnowledgeChanged;   // 参数：新的学识数
+        public static Action OnMaxPopulationChanged;
+        public static Action OnPopulationChanged;
+        public static Action OnFoodChanged;
+        public static Action OnGoldChanged;
+        public static Action OnKnowledgeChanged;
         
         public static Action<BuildingComponent> OnBuildingPlaced;
         public static Action<BuildingData> OnBuildingButtonClick;

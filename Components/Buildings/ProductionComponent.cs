@@ -59,13 +59,13 @@ namespace Components.Buildings
             switch (data.ResourceType)
             {
                 case ResourceType.Food:
-                    ResourceManager.Instance.AddFood(finalAmount);
+                    ResourceManager.Instance.Food += finalAmount;
                     break;
                 case ResourceType.Gold:
-                    ResourceManager.Instance.AddGold(finalAmount);
+                    ResourceManager.Instance.Gold+=finalAmount;
                     break;
                 case ResourceType.Knowledge:
-                    ResourceManager.Instance.AddKnowledge(finalAmount);
+                    ResourceManager.Instance.Knowledge+=finalAmount;
                     break;
             }
 

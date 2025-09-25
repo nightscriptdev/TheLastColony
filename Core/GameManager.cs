@@ -135,9 +135,9 @@ namespace Core
             EventManager.OnNightStart?.Invoke(CurrentDay);
         }
 
-        private void OnPopulationChanged(int newPopulation)
+        private void OnPopulationChanged()
         {
-            if (newPopulation <= 0 && CurrentState == GameState.Playing)
+            if (ResourceManager.Instance.Population <= 0 && CurrentState == GameState.Playing)
             {
                 EndGame();
             }

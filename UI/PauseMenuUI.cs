@@ -42,6 +42,7 @@ namespace UI
 
             if (pauseMenuPanel != null)
                 pauseMenuPanel.SetActive(false);
+            
         }
 
         private void OnPauseToggleClicked()

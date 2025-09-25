@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using Core;
 using Enums;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Localization.Settings;
 
@@ -75,6 +76,11 @@ namespace Managers
             // 保存设置
             PlayerPrefs.SetInt(LANGUAGE_PREF_KEY, localeIndex);
             PlayerPrefs.Save();
+        }
+
+        public int GetLanguageIndex()
+        {
+            return PlayerPrefs.GetInt(LANGUAGE_PREF_KEY);
         }
         
         public string GetLocalizedString(string tableReference, string entryReference)

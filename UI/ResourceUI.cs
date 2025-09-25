@@ -14,6 +14,7 @@ namespace UI
         private void OnEnable()
         {
             EventManager.OnPopulationChanged += UpdatePopulationUI;
+            EventManager.OnPopulationChanged += UpdateFoodUI;
             EventManager.OnFoodChanged += UpdateFoodUI;
             EventManager.OnGoldChanged += UpdateGoldUI;
             EventManager.OnKnowledgeChanged += UpdateKnowledgeUI;
@@ -22,6 +23,7 @@ namespace UI
         private void OnDisable()
         {
             EventManager.OnPopulationChanged -= UpdatePopulationUI;
+            EventManager.OnPopulationChanged -= UpdateFoodUI;
             EventManager.OnFoodChanged -= UpdateFoodUI;
             EventManager.OnGoldChanged -= UpdateGoldUI;
             EventManager.OnKnowledgeChanged -= UpdateKnowledgeUI;
@@ -36,18 +38,18 @@ namespace UI
         {
             if (ResourceManager.Instance != null)
             {
-                UpdatePopulationUI(ResourceManager.Instance.Population);
-                UpdateFoodUI(ResourceManager.Instance.Food);
-                UpdateGoldUI(ResourceManager.Instance.Gold);
-                UpdateKnowledgeUI(ResourceManager.Instance.Knowledge);
+                UpdatePopulationUI();
+                UpdateFoodUI();
+                UpdateGoldUI();
+                UpdateKnowledgeUI();
             }
         }
 
-        private void UpdatePopulationUI(int population)
+        private void UpdatePopulationUI()
         {
-            populationText.text = population.ToString();
+            populationText.text = ResourceManager.Instance.Population.ToString();
             
-            if (population <= 1)
+            if (ResourceManager.Instance.Population <= 1)
             {
                 populationText.color = Color.red;
             }
@@ -57,11 +59,11 @@ namespace UI
             }
         }
 
-        private void UpdateFoodUI(int food)
+        private void UpdateFoodUI()
         {
-            foodText.text = food.ToString();
+            foodText.text = ResourceManager.Instance.Food.ToString();
             
-            if (food < ResourceManager.Instance.Population)
+            if (ResourceManager.Instance.Food < ResourceManager.Instance.Population)
             {
                 foodText.color = Color.red;
             }
@@ -71,14 +73,14 @@ namespace UI
             }
         }
 
-        private void UpdateGoldUI(int gold)
+        private void UpdateGoldUI()
         {
-            goldText.text = gold.ToString();
+            goldText.text = ResourceManager.Instance.Gold.ToString();
         }
 
-        private void UpdateKnowledgeUI(int knowledge)
+        private void UpdateKnowledgeUI()
         {
-            knowledgeText.text = knowledge.ToString();
+            knowledgeText.text = ResourceManager.Instance.Knowledge.ToString();
         }
     }
 }

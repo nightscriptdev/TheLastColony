@@ -233,7 +233,7 @@ namespace Components.Enemies
 
         private void UpdateTarget()
         {
-            if (!currentTarget || !currentTarget.gameObject.activeSelf)
+            if (!currentTarget)
             {
                 currentPath = GridManager.Instance.GetNearestPathToTarget(this, out currentTarget);
                 if (currentPath != null)
@@ -255,7 +255,7 @@ namespace Components.Enemies
         
         private void MoveAlongPath()
         {
-            if (currentPath == null || currentPathIndex >= currentPath.Count)
+            if (currentPath == null || currentPathIndex >= currentPath.Count || !currentTarget)
             {
                 return;
             }
@@ -282,13 +282,12 @@ namespace Components.Enemies
             
             Vector3 moveDirection = (targetPos - transform.position).normalized;
             Vector3 separation = CalculateSeparationForce();
-            moveDirection = (moveDirection + separation * separationWeight).normalized;
+            Vector3 adjustedMoveDirection = (moveDirection + separation * separationWeight).normalized;
                 
             
-            transform.position += moveDirection * currentSpeed * Time.deltaTime;
-            
-            if(currentTarget)
-                spriteRenderer.flipX = transform.position.x > currentTarget.transform.position.x;
+            transform.position += adjustedMoveDirection * currentSpeed * Time.deltaTime;
+
+            spriteRenderer.flipX = moveDirection.x < 0;
             
             if (Vector3.Distance(transform.position, targetPos) < 0.1f)
             {
@@ -336,6 +335,7 @@ namespace Components.Enemies
                 currentState = EnemyState.Moving;
                 return;
             }
+            spriteRenderer.flipX = transform.position.x > currentTarget.transform.position.x;
             isAttacking = true;
             StartCoroutine(AttackCoroutine());
         }

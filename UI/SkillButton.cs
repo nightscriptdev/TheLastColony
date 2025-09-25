@@ -18,6 +18,16 @@ namespace UI
         
         [SerializeField] private SkillData skillData;
 
+        private void Awake()
+        {
+            EventManager.OnKnowledgeChanged += RefreshTooltipIfVisible;
+        }
+
+        private void OnDestroy()
+        {
+            EventManager.OnKnowledgeChanged -= RefreshTooltipIfVisible;
+        }
+        
         public void Update()
         {
             if (ResearchManager.Instance.IsSkillUnlocked(skillData.skillType))
@@ -110,8 +120,7 @@ namespace UI
             
             return tooltip;
         }
-
-
+        
         public void OnPointerClick(PointerEventData eventData)
         {
             SkillManager.Instance.TrySelectSkill(skillData.skillType);

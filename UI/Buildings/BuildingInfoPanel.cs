@@ -59,9 +59,9 @@ namespace UI.Buildings
             healthText.text = $"{currentHealthComponent.CurrentHP}/{currentHealthComponent.MaxHP}";
             currentHealthComponent.OnDeath += Hide;
             currentHealthComponent.OnHealthChanged += UpdateHealBar;
+            currentHealthComponent.OnHealthFull += RefreshPanel;
 
-            UpdateBuildingInfo();
-            UpdateButtonStates();
+            RefreshPanel();
 
             panelRoot.SetActive(true);
         }
@@ -90,8 +90,7 @@ namespace UI.Buildings
 
         void OnBuildingCompleted(BuildingComponent building)
         {
-            UpdateBuildingInfo();
-            UpdateButtonStates();
+            RefreshPanel();
         }
         
         void OnSelectedLocaleChanged(Locale locale)
@@ -131,24 +130,24 @@ namespace UI.Buildings
 
                 if (!ResearchManager.Instance.IsBuildingUnlocked(new BuildingKey(currentBuilding.Data.BuildingType, currentBuilding.Level+1)))
                 {
-                    upgradeTooltipTrigger.customTooltip = $"<color=red>{loc.GetGameText("tooltip.research_required")} [{loc.GetGameText("tooltip.building.level", currentBuilding.Level+1)}{loc.GetLocalizedBuildingName(currentBuilding.Data.BuildingType)}]</color>";
+                    upgradeTooltipTrigger.constantTooltip = $"<color=red>{loc.GetGameText("tooltip.research_required")} [{loc.GetGameText("tooltip.building.level", currentBuilding.Level+1)}{loc.GetLocalizedBuildingName(currentBuilding.Data.BuildingType)}]</color>";
                     upgradeButton.interactable = false;
                     return;
                 }
                 if (!currentBuilding.IsUpgradeable)
                 {
-                    upgradeTooltipTrigger.customTooltip = $"<color=red>{loc.GetGameText("building.require_full_health")}</color>";
+                    upgradeTooltipTrigger.constantTooltip = $"<color=red>{loc.GetGameText("building.require_full_health")}</color>";
                     upgradeButton.interactable = false;
                     return;
                 }
                 if (ResourceManager.Instance.Gold < currentBuilding.LevelData.UpgradeCost)
                 {
-                    upgradeTooltipTrigger.customTooltip = $"<color=red>{loc.GetGameText("building.insufficient_gold")}</color>";
+                    upgradeTooltipTrigger.constantTooltip = $"<color=red>{loc.GetGameText("building.insufficient_gold")}</color>";
                     upgradeButton.interactable = false;
                     return;
                 }
 
-                upgradeTooltipTrigger.customTooltip = "";
+                upgradeTooltipTrigger.constantTooltip = "";
                 upgradeButton.interactable = true;
                 upgradeTooltipTrigger.Hide();
             }
@@ -159,16 +158,20 @@ namespace UI.Buildings
             }
         }
 
-        void OnGoldChanged(int currentGold)
+        void RefreshPanel()
         {
             UpdateBuildingInfo();
             UpdateButtonStates();
         }
+        
+        void OnGoldChanged()
+        {
+            RefreshPanel();
+        }
 
         void OnResearchComplete(ResearchData researchData)
         {
-            UpdateBuildingInfo();
-            UpdateButtonStates();
+            RefreshPanel();
         }
         
         private void OnUpgradeClicked()

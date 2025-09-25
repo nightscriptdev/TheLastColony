@@ -1,4 +1,5 @@
 ﻿using System;
+using Core;
 using Data;
 using Managers;
 using TMPro;
@@ -51,7 +52,7 @@ namespace UI
         
         }
     
-        public void RefreshState(int nowKnowledge)
+        public void RefreshState()
         {
             if (ResearchManager.Instance.IsResearched(research))
             {
@@ -64,7 +65,7 @@ namespace UI
             {
                 button.interactable = ResearchManager.Instance.CanResearch(research);
 
-                if (nowKnowledge >= research.knowledgeCost)
+                if (ResourceManager.Instance.Knowledge >= research.knowledgeCost)
                 {
                     costText.color = Color.black;
                 }

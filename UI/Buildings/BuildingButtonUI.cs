@@ -1,5 +1,4 @@
-﻿using System;
-using Core;
+﻿using Core;
 using Data.Buildings;
 using Managers;
 using UI.Tooltip;
@@ -17,18 +16,16 @@ namespace UI.Buildings
         
         [SerializeField] private BuildingData buildingData;
         public BuildingData BuildingData => buildingData;
-        private bool isAffordable;
-        private string tooltip;
 
         private void Awake()
         {
             button.onClick.AddListener(OnButtonClick);
-            UpdateTooltip(null);
-            LocalizationSettings.SelectedLocaleChanged += UpdateTooltip;
+            GetConstantTooltip();
             
             EventManager.OnGoldChanged += OnGoldChanged;
             EventManager.OnDayStart += OnDayStart;
             EventManager.OnNightStart += OnNightStart;
+            LocalizationSettings.SelectedLocaleChanged += OnSelectedLocaleChanged;
         }
 
         private void OnDestroy()
@@ -36,10 +33,12 @@ namespace UI.Buildings
             EventManager.OnGoldChanged -= OnGoldChanged;
             EventManager.OnDayStart -= OnDayStart;
             EventManager.OnNightStart -= OnNightStart;
-            LocalizationSettings.SelectedLocaleChanged -= UpdateTooltip;
+            LocalizationSettings.SelectedLocaleChanged -= OnSelectedLocaleChanged;
         }
 
-        public void UpdateTooltip(Locale locale)
+        
+        
+        public void GetConstantTooltip()
         {
             var levelData = buildingData.LevelDatas[0];
             var loc = LocalizationManager.Instance;
@@ -55,7 +54,7 @@ namespace UI.Buildings
             infoBuilder.AppendLine(loc.GetGameText("building.cost", buildingData.BuildCost));
             infoBuilder.AppendLine(loc.GetGameText("building.health", levelData.MaxHP));
 
-            tooltip = infoBuilder.ToString();
+            constantTooltip = infoBuilder.ToString();
         }
         
         private void OnButtonClick()
@@ -63,44 +62,52 @@ namespace UI.Buildings
             EventManager.OnBuildingButtonClick?.Invoke(buildingData);
         }
         
-        private void OnGoldChanged(int newAmount)
+        void OnSelectedLocaleChanged(Locale locale)
+        {
+            GetConstantTooltip();
+        }
+        
+        private void OnGoldChanged()
         {
             if (buildingData == null) return;
             
-            isAffordable = newAmount >= buildingData.BuildCost;
             UpdateInteractableState();
+            RefreshTooltipIfVisible();
         }
         
         private void OnDayStart(int day)
         {
             UpdateInteractableState();
+            RefreshTooltipIfVisible();
         }
 
         private void OnNightStart(int day)
         {
             UpdateInteractableState();
+            RefreshTooltipIfVisible();
         }
         
         private void UpdateInteractableState()
         {
             // 必须是白天并且金币足够才能交互
             bool isDayTime = TimeManager.Instance.IsDay;
-            button.interactable = isDayTime && isAffordable;
+            button.interactable = isDayTime && (ResourceManager.Instance.Gold >= buildingData.BuildCost);
         }
         
         public override string GetTooltip()
         {
-            string tooltip = String.Empty;
+            string tooltip = "";
+
             if (!TimeManager.Instance.IsDay)
             {
-                tooltip = $"<color=red>{LocalizationManager.Instance.GetGameText("building.daytime_build_only")}\n</color>";
+                tooltip += $"<color=red>{LocalizationManager.Instance.GetGameText("building.daytime_build_only")}</color>\n\n";
             }
-            else if (!isAffordable)
+            else if (ResourceManager.Instance.Gold < buildingData.BuildCost)
             {
-                tooltip = $"<color=red>{LocalizationManager.Instance.GetGameText("building.insufficient_gold")}\n</color>";
+                tooltip +=$"<color=red>{LocalizationManager.Instance.GetGameText("building.insufficient_gold")}</color>\n\n";
             }
             
-            return tooltip + this.tooltip;
+            return tooltip + constantTooltip;
         }
     }
 }
