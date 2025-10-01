@@ -76,7 +76,7 @@ namespace Core
             EventManager.OnDayStart -= OnDayStart;
         }
 
-//#if UNITY_EDITOR
+#if UNITY_EDITOR
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.A))
@@ -117,7 +117,7 @@ namespace Core
                 GameManager.Instance.KillCount = 701;
             }
         }
-//#endif
+#endif
         
         /// <summary>
         /// 初始化资源到开局状态

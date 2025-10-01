@@ -25,8 +25,8 @@ namespace Components.Enemies
         
         [Header("分离行为参数")]
         [SerializeField] private float separationRadius = 0.5f;
-        [SerializeField] private float separationForce = 1f;
-        [SerializeField] [Range(0, 1)] private float separationWeight = 0.5f; // 分离力占移动方向的权重
+        //[SerializeField] private float separationForce = 1f;
+        [SerializeField] private float separationWeight = 0.2f;
 
         private EnemyData enemyData;
         private HealthComponent healthComponent;
@@ -263,7 +263,7 @@ namespace Components.Enemies
             SetMovingAnimation(true);
             
             // 判断是否和路径的第一个点在同一个格子
-            if (currentPathIndex == 0)
+            if (currentPath.Count >1 && currentPathIndex == 0)
             {
                 if (GridManager.Instance.WorldToGrid(transform.position) == GridManager.Instance.WorldToGrid(currentPath[0]))
                 {
@@ -282,10 +282,10 @@ namespace Components.Enemies
             
             Vector3 moveDirection = (targetPos - transform.position).normalized;
             Vector3 separation = CalculateSeparationForce();
-            Vector3 adjustedMoveDirection = (moveDirection + separation * separationWeight).normalized;
-                
+            //Vector3 adjustedMoveDirection = (moveDirection + separation * separationWeight).normalized;
             
-            transform.position += adjustedMoveDirection * currentSpeed * Time.deltaTime;
+            //transform.position += adjustedMoveDirection * currentSpeed * Time.deltaTime;
+            transform.position += (moveDirection * currentSpeed + separation * separationWeight) * Time.deltaTime;
 
             spriteRenderer.flipX = moveDirection.x < 0;
             
@@ -317,7 +317,7 @@ namespace Components.Enemies
             if (count > 0)
             {
                 force /= count;
-                force *= separationForce; 
+                //force *= separationForce; 
             }
             return force;
         }
@@ -442,6 +442,15 @@ namespace Components.Enemies
             
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(transform.position, attackRange);
+            
+            if (currentPath == null || currentPath.Count == 0) return;
+
+            Gizmos.color = Color.green;
+            Gizmos.DrawSphere(currentPath[0], 0.5f);
+            for (int i = currentPathIndex; i < currentPath.Count - 1; i++)
+            {
+                Gizmos.DrawLine(currentPath[i], currentPath[i + 1]);
+            }
         }
     }
 }

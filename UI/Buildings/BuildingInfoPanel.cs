@@ -81,11 +81,13 @@ namespace UI.Buildings
             {
                 currentHealthComponent.OnDeath -= Hide;
                 currentHealthComponent.OnHealthChanged -= UpdateHealBar;
-                currentHealthComponent.OnHealthFull -= UpdateButtonStates;
+                currentHealthComponent.OnHealthFull -= RefreshPanel;
                 currentHealthComponent = null;
             }
 
             healthBar.StopAllCoroutines();
+            
+            EventManager.OnBuildingInfoPanelHide?.Invoke();
         }
 
         void OnBuildingCompleted(BuildingComponent building)

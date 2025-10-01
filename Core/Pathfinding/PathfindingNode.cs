@@ -1,8 +1,10 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace Core.Pathfinding
 {
-    public class PathfindingNode
+    public class PathfindingNode : IComparable<PathfindingNode>
     {
         public Vector2Int gridPosition;
         public int gCost;
@@ -35,6 +37,17 @@ namespace Core.Pathfinding
             int dx = Mathf.Abs(start.x - end.x);
             int dy = Mathf.Abs(start.y - end.y);
             return 10 * Mathf.Max(dx, dy) + 4 * Mathf.Min(dx, dy);
+        }
+
+        public int CompareTo(PathfindingNode other)
+        {
+            int compare = FCost.CompareTo(other.FCost);
+            if (compare == 0)
+            {
+                // FCost 相同，比较 HCost
+                compare = hCost.CompareTo(other.hCost);
+            }
+            return compare;
         }
     }
 }

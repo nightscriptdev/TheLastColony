@@ -15,7 +15,7 @@ namespace Core.Grid
         [SerializeField] private Tilemap groundTilemap;
         [SerializeField] private Tilemap obstaclesTilemap;
         
-        [SerializeField] private int gridWidth = 28; //偶数方便居中和对称
+        [SerializeField] private int gridWidth = 28;
         [SerializeField] private int gridHeight = 16;
         [SerializeField] private Vector2 cellSize = new Vector2(1f, 1f);
         private Vector3 origin;
@@ -197,13 +197,14 @@ namespace Core.Grid
             Vector2Int targetGrid = Vector2Int.zero;
             PathfindingNode endNode = null;
             List<Vector3> path;
+            List<Vector3> closestPath = null;
             
             Vector2Int startGrid = WorldToGrid(enemy.transform.position);
             bool onlyDefenseCrystalsLeft = false;
             PathfindingNode closestNode = new PathfindingNode();
-            closestNode.hCost = int.MaxValue;
             BuildingComponent currentTargetBuilding = null; // 记录当前目标建筑
             BuildingComponent closestTargetBuilding = null; // 记录最接近的建筑
+            
             
             while (allBuildings.Count > 0)
             {
@@ -215,10 +216,10 @@ namespace Core.Grid
                         targetBuilding = currentTargetBuilding;
                         return path;
                     }
-                    if (endNode != null && endNode.hCost < closestNode.hCost)
+                    if (endNode != null && endNode.FCost < closestNode.FCost)
                     {
-                        closestNode = endNode;
-                        closestTargetBuilding = currentTargetBuilding;
+                        closestPath = path;
+                        targetBuilding = currentTargetBuilding;
                     }
                 }
                 else if (!onlyDefenseCrystalsLeft)
@@ -231,8 +232,7 @@ namespace Core.Grid
                 }
             }
             
-            targetBuilding = closestTargetBuilding;
-            return pathfinder.RetracePath(closestNode);
+            return closestPath;
             
             bool FindBestTargetGrid()
             {

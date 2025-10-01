@@ -21,6 +21,11 @@ namespace Components.Buildings
         {
             EventManager.OnDayStart += OnDayStart;
             EventManager.OnNightStart += OnNightStart;
+
+            if (TimeManager.Instance)
+                IsProducing = TimeManager.Instance.IsDay;
+            else
+                IsProducing = true;
         }
         private void OnDisable()
         {

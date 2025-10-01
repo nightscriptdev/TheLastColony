@@ -31,7 +31,9 @@ namespace Core
         
         public static Action<BuildingComponent> OnBuildingPlaced;
         public static Action<BuildingData> OnBuildingButtonClick;
+        public static Action OnBuildingInfoPanelHide;
 
+        
         public static Action<EnemyComponent> OnEnemyDeath;
         
         public static Action<ResearchData> OnResearchComplete;
@@ -40,5 +42,7 @@ namespace Core
         public static Action<Vector3> OnGridRelease;
 
         public static Action<Vector3> OnCellBecomeObstacle;
+        
+
     }
 }

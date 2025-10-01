@@ -52,20 +52,16 @@ namespace Managers
 
         private void HandleSkillInput()
         {
-            if (Input.GetKeyDown(KeyCode.Q))
+            foreach (var skillData in allSkills)
             {
-                TrySelectSkill(SkillType.Lightning);
-            }
-            else if (Input.GetKeyDown(KeyCode.W))
-            {
-                TrySelectSkill(SkillType.DarkImpact);
-            }
-            else if (Input.GetKeyDown(KeyCode.E))
-            {
-                TrySelectSkill(SkillType.VoidVortex);
+                if (Input.GetKeyDown(skillData.hotkey))
+                {
+                    TrySelectSkill(skillData.skillType);
+                    break; // 找到匹配的就退出
+                }
             }
             // 右键取消
-            else if (Input.GetMouseButtonDown(1) && isInSkillCastMode)
+            if (Input.GetMouseButtonDown(1) && isInSkillCastMode)
             {
                 CancelSkillCast();
             }

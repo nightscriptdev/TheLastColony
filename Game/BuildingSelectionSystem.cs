@@ -1,5 +1,7 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using Components.Buildings;
+using Core;
 using Managers;
 using UI.Buildings;
 using UnityEngine.EventSystems;
@@ -28,6 +30,16 @@ namespace Game
         {
             if (gameCamera == null)
                 gameCamera = Camera.main;
+        }
+
+        private void OnEnable()
+        {
+            EventManager.OnBuildingInfoPanelHide += OnBuildingInfoPanelHide;
+        }
+
+        private void OnDisable()
+        {
+            EventManager.OnBuildingInfoPanelHide -= OnBuildingInfoPanelHide;
         }
 
         private void Update()
@@ -107,7 +119,6 @@ namespace Game
             DeselectBuilding();
 
             selectedBuilding = building;
-            selectedBuilding.OnBuildingDestroyed += OnBuildingDestroyed;
             
             SetBuildingSelectedVisual(true);
             
@@ -117,7 +128,7 @@ namespace Game
             }
         }
 
-        void OnBuildingDestroyed(BuildingComponent building)
+        void OnBuildingInfoPanelHide()
         {
             DeselectBuilding();
         }
@@ -127,7 +138,6 @@ namespace Game
             if (selectedBuilding != null)
             {
                 SetBuildingSelectedVisual(false);
-                selectedBuilding.OnBuildingDestroyed -= OnBuildingDestroyed;
                 selectedBuilding = null;
             }
 

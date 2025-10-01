@@ -12,13 +12,13 @@ namespace Core.Pathfinding
         public List<Vector3> FindPath(Vector2Int startGrid, Vector2Int targetGrid, out PathfindingNode endNode, bool findAdjacentIfBlocked = false)
         {
             // 检查起点是否可通行
-            if (!GridManager.Instance.IsWalkable(startGrid.x, startGrid.y))
+            /*if (!GridManager.Instance.IsWalkable(startGrid.x, startGrid.y))
             {
                 endNode = null;
                 return null;
-            }
+            }*/
             
-            List<PathfindingNode> openSet = new List<PathfindingNode>();
+            MinHeap<PathfindingNode> openSet = new MinHeap<PathfindingNode>();
             HashSet<Vector2Int> closedSet = new HashSet<Vector2Int>();
             Dictionary<Vector2Int, PathfindingNode> nodeMap = new Dictionary<Vector2Int, PathfindingNode>();
             
@@ -26,30 +26,28 @@ namespace Core.Pathfinding
             startNode.gCost = 0;
             startNode.CalculateHCost(targetGrid);
             
-            openSet.Add(startNode);
+            openSet.Insert(startNode);
             nodeMap[startGrid] = startNode;
             
             PathfindingNode closestNode = startNode;
-            int smallestHCost = startNode.hCost;
 
             while (openSet.Count > 0)
             {
-                PathfindingNode currentNode = GetLowestFCostNode(openSet);
-                openSet.Remove(currentNode);
+                PathfindingNode currentNode = openSet.ExtractMin();
                 closedSet.Add(currentNode.gridPosition);
-    
-                // 更新最近节点（使用hCost）
-                if (currentNode.hCost < smallestHCost)
-                {
-                    smallestHCost = currentNode.hCost;
-                    closestNode = currentNode;
-                }
                 
                 // 检查是否到达目标
                 if (currentNode.gridPosition == targetGrid || (findAdjacentIfBlocked && GridManager.IsAdjacent(currentNode.gridPosition, targetGrid)))
                 {
                     endNode = currentNode;
                     return RetracePath(currentNode);
+                }
+                
+                // 更新最近节点
+                if (currentNode.FCost < closestNode.FCost ||
+                    (currentNode.FCost == closestNode.FCost && currentNode.hCost < closestNode.hCost))
+                {
+                    closestNode = currentNode;
                 }
                 
                 List<Vector2Int> neighbors = GridManager.Instance.GetWalkableNeighbors(
@@ -77,7 +75,7 @@ namespace Core.Pathfinding
                         neighborNode.gCost = newGCost;
                         neighborNode.parent = currentNode;
                         if (!openSet.Contains(neighborNode))
-                            openSet.Add(neighborNode);
+                            openSet.Insert(neighborNode);
                     }
                 }
             }
@@ -86,7 +84,7 @@ namespace Core.Pathfinding
             return RetracePath(closestNode);
         }
         
-        private PathfindingNode GetLowestFCostNode(List<PathfindingNode> openSet)
+        /*private PathfindingNode GetLowestFCostNode(List<PathfindingNode> openSet)
         {
             PathfindingNode lowestFCostNode = openSet[0];
             for (int i = 1; i < openSet.Count; i++)
@@ -98,7 +96,7 @@ namespace Core.Pathfinding
                 }
             }
             return lowestFCostNode;
-        }
+        }*/
         
         public List<Vector3> RetracePath(PathfindingNode endNode)
         {
