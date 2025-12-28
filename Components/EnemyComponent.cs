@@ -47,12 +47,14 @@ namespace Components.Enemies
             Idle,
             Moving,
             Attacking,
-            Dead
+            Dead,
+            Pathfinding
         }
         private EnemyState currentState = EnemyState.Idle;
         
         private float attackCooldown = 0f;
         private bool isAttacking = false;
+        private Coroutine pathfindingCoroutine = null;
 
         private void Awake()
         {
@@ -81,6 +83,12 @@ namespace Components.Enemies
             healthComponent.OnTakeDamage -= OnTakeDamage;
             EventManager.OnDayStart -= OnDayStart;
             EventManager.OnCellBecomeObstacle -= OnCellBecameObstacle;
+            
+            if (pathfindingCoroutine != null)
+            {
+                StopCoroutine(pathfindingCoroutine);
+                pathfindingCoroutine = null;
+            }
         }
         
         public void Initialize(EnemyData data, int currentDay)
@@ -101,6 +109,7 @@ namespace Components.Enemies
             RecalculateStats();
             
             StopAllCoroutines();
+            pathfindingCoroutine = null;
             StartCoroutine(AILoop());
 
             currentState = EnemyState.Idle;
@@ -111,6 +120,12 @@ namespace Components.Enemies
             while (currentState != EnemyState.Dead)
             {
                 yield return new WaitForSeconds(aiUpdateFrequency);
+                
+                // 如果正在寻路,跳过这次更新
+                if (currentState == EnemyState.Pathfinding)
+                {
+                    continue;
+                }
                 
                 UpdateTarget();
                 
@@ -145,8 +160,11 @@ namespace Components.Enemies
                 case EnemyState.Attacking:
                     TryAttack();
                     break;
+                case EnemyState.Pathfinding:
+                    // 寻路中,显示待机动画
+                    SetMovingAnimation(false);
+                    break;
             }
-            
         }
         
         public void ApplyStatusEffect(StatusEffect newEffect)
@@ -200,7 +218,6 @@ namespace Components.Enemies
                         statusEffects.Remove(type);
                     }
                 }
-                // 只在有效果被移除时重新计算一次
                 RecalculateStats();
             }
         }
@@ -233,14 +250,50 @@ namespace Components.Enemies
 
         private void UpdateTarget()
         {
-            if (!currentTarget)
+            if (!currentTarget && pathfindingCoroutine == null)
             {
-                currentPath = GridManager.Instance.GetNearestPathToTarget(this, out currentTarget);
+                // 使用协程版本的寻路
+                currentState = EnemyState.Pathfinding;
+                pathfindingCoroutine = StartCoroutine(RequestPathAsync());
+            }
+        }
+        
+        /// <summary>
+        /// 异步请求路径
+        /// </summary>
+        private IEnumerator RequestPathAsync()
+        {
+            bool pathReceived = false;
+            
+            GridManager.Instance.GetNearestPathToTargetAsync(this, (path, target) =>
+            {
+                currentPath = path;
+                currentTarget = target;
+                pathReceived = true;
+                
                 if (currentPath != null)
                 {
                     currentPathIndex = 0;
                     ReleaseGrid();
                 }
+            });
+            
+            // 等待路径返回
+            while (!pathReceived)
+            {
+                yield return null;
+            }
+            
+            pathfindingCoroutine = null;
+            
+            // 寻路完成,恢复到移动或idle状态
+            if (currentPath != null && currentTarget != null)
+            {
+                currentState = EnemyState.Moving;
+            }
+            else
+            {
+                currentState = EnemyState.Idle;
             }
         }
 
@@ -263,7 +316,7 @@ namespace Components.Enemies
             SetMovingAnimation(true);
             
             // 判断是否和路径的第一个点在同一个格子
-            if (currentPath.Count >1 && currentPathIndex == 0)
+            if (currentPath.Count > 1 && currentPathIndex == 0)
             {
                 if (GridManager.Instance.WorldToGrid(transform.position) == GridManager.Instance.WorldToGrid(currentPath[0]))
                 {
@@ -282,9 +335,7 @@ namespace Components.Enemies
             
             Vector3 moveDirection = (targetPos - transform.position).normalized;
             Vector3 separation = CalculateSeparationForce();
-            //Vector3 adjustedMoveDirection = (moveDirection + separation * separationWeight).normalized;
             
-            //transform.position += adjustedMoveDirection * currentSpeed * Time.deltaTime;
             transform.position += (moveDirection * currentSpeed + separation * separationWeight) * Time.deltaTime;
 
             spriteRenderer.flipX = moveDirection.x < 0;
@@ -294,6 +345,7 @@ namespace Components.Enemies
                 currentPathIndex++;
             }
         }
+        
         private Vector3 CalculateSeparationForce()
         {
             Vector3 force = Vector3.zero;
@@ -317,10 +369,10 @@ namespace Components.Enemies
             if (count > 0)
             {
                 force /= count;
-                //force *= separationForce; 
             }
             return force;
         }
+        
         private void TryAttack()
         {
             if (attackCooldown > 0 || isAttacking || currentTarget == null)
@@ -339,6 +391,7 @@ namespace Components.Enemies
             isAttacking = true;
             StartCoroutine(AttackCoroutine());
         }
+        
         private IEnumerator AttackCoroutine()
         {
             attackCooldown = attackCooldownTime;
@@ -390,15 +443,15 @@ namespace Components.Enemies
         
         IEnumerator DamageFlash()
         {
-            spriteRenderer. material.SetColor(FlashColorID, Color.red);
-            spriteRenderer. material.SetFloat(FlashAmountID, 1f);
+            spriteRenderer.material.SetColor(FlashColorID, Color.red);
+            spriteRenderer.material.SetFloat(FlashAmountID, 1f);
             yield return new WaitForSeconds(0.15f);
             spriteRenderer.material.SetFloat(FlashAmountID, 0f);
         }
         
         private void OnEnemyDeath()
         {
-            if (currentState == EnemyState.Dead) return; // 防止重复调用
+            if (currentState == EnemyState.Dead) return;
             currentState = EnemyState.Dead;
             
             PoolingManager.Instance.Get(enemyData.deathEffectPrefab).transform.SetPositionAndRotation(transform.position, Quaternion.identity);
@@ -406,7 +459,6 @@ namespace Components.Enemies
             ReleaseGrid();
             EventManager.OnEnemyDeath?.Invoke(this);
             Destroy(gameObject);
-            
         }
         
         private void OnDayStart(int day)
@@ -430,7 +482,15 @@ namespace Components.Enemies
             
             if (currentPath.Contains(pos))
             {
+                // 停止当前的寻路协程
+                if (pathfindingCoroutine != null)
+                {
+                    StopCoroutine(pathfindingCoroutine);
+                    pathfindingCoroutine = null;
+                }
+                
                 currentTarget = null;
+                currentPath = null;
                 UpdateTarget();
             }
         }

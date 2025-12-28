@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using Components.Buildings;
 using Components.Enemies;
@@ -87,6 +88,7 @@ namespace Core.Grid
             SetCellState(building.GridPosition.x, building.GridPosition.y, CellState.BuildingObstacle);
         }
         
+        // 保留同步版本用于向后兼容
         public List<Vector3> FindPath(Vector2Int startGrid, Vector2Int targetGrid, out PathfindingNode endNode, bool findAdjacentIfBlocked = false)
         {
             return pathfinder.FindPath(startGrid, targetGrid, out endNode, findAdjacentIfBlocked);
@@ -95,6 +97,14 @@ namespace Core.Grid
         public List<Vector3> FindPath(Vector3 startWorldPos, Vector3 targetWorldPos, out PathfindingNode endNode)
         {
             return pathfinder.FindPath(WorldToGrid(startWorldPos), WorldToGrid(targetWorldPos), out endNode);
+        }
+        
+        /// <summary>
+        /// 协程版本的寻路
+        /// </summary>
+        public Coroutine FindPathAsync(Vector2Int startGrid, Vector2Int targetGrid, bool findAdjacentIfBlocked, System.Action<List<Vector3>, PathfindingNode> callback)
+        {
+            return StartCoroutine(pathfinder.FindPathCoroutine(startGrid, targetGrid, findAdjacentIfBlocked, callback));
         }
         
         public bool CanBuildAt(Vector3 worldPosition)
@@ -106,7 +116,7 @@ namespace Core.Grid
         public CellState GetCellState(int x, int y)
         {
             if (!IsValidGridPosition(x, y))
-                return CellState.TerrainObstacle; // 超出边界视为不可通行
+                return CellState.TerrainObstacle;
             return gridArray[x, y];
         }
         
@@ -132,7 +142,7 @@ namespace Core.Grid
         
         public Vector2Int WorldToGrid(Vector3 worldPosition)
         {
-            Vector3 gridPosition = worldPosition - origin;//减去原点
+            Vector3 gridPosition = worldPosition - origin;
             int x = Mathf.FloorToInt(gridPosition.x / cellSize.x);
             int y = Mathf.FloorToInt(gridPosition.y / cellSize.y);
             return new Vector2Int(x, y);
@@ -184,6 +194,100 @@ namespace Core.Grid
             return neighbors;
         }
         
+        /// <summary>
+        /// 协程版本 - 获取到最近目标的路径
+        /// </summary>
+        public void GetNearestPathToTargetAsync(EnemyComponent enemy, Action<List<Vector3>, BuildingComponent> callback)
+        {
+            StartCoroutine(GetNearestPathCoroutine(enemy, callback));
+        }
+        
+        private IEnumerator GetNearestPathCoroutine(EnemyComponent enemy, Action<List<Vector3>, BuildingComponent> callback)
+        {
+            if (BuildingManager.Instance.AllBuildings == null || BuildingManager.Instance.AllBuildings.Count == 0)
+            {
+                callback?.Invoke(null, null);
+                yield break;
+            }
+            
+            var allBuildings = new List<BuildingComponent>(BuildingManager.Instance.AllBuildings);
+            Vector2Int startGrid = WorldToGrid(enemy.transform.position);
+            bool onlyDefenseCrystalsLeft = false;
+            
+            List<Vector3> closestPath = null;
+            BuildingComponent targetBuilding = null;
+            PathfindingNode closestNode = new PathfindingNode();
+            
+            int buildingsChecked = 0;
+            const int BUILDINGS_PER_FRAME = 2; // 每帧检查的建筑数量
+            
+            while (allBuildings.Count > 0)
+            {
+                BuildingComponent currentBuilding = null;
+                Vector2Int targetGrid = Vector2Int.zero;
+                
+                // 查找最佳目标
+                if (FindBestTargetGrid(allBuildings, startGrid, onlyDefenseCrystalsLeft, out currentBuilding, out targetGrid))
+                {
+                    // 使用协程寻路
+                    bool pathComplete = false;
+                    List<Vector3> foundPath = null;
+                    PathfindingNode endNode = null;
+                    
+                    yield return FindPathAsync(startGrid, targetGrid, true, (path, node) =>
+                    {
+                        foundPath = path;
+                        endNode = node;
+                        pathComplete = true;
+                    });
+                    
+                    // 等待寻路完成
+                    while (!pathComplete)
+                    {
+                        yield return null;
+                    }
+                    
+                    if (foundPath != null && endNode != null)
+                    {
+                        if (IsAdjacent(endNode.gridPosition, targetGrid))
+                        {
+                            // 找到了完整路径
+                            callback?.Invoke(foundPath, currentBuilding);
+                            yield break;
+                        }
+                        
+                        // 记录最接近的路径
+                        if (endNode.FCost < closestNode.FCost)
+                        {
+                            closestPath = foundPath;
+                            targetBuilding = currentBuilding;
+                            closestNode = endNode;
+                        }
+                    }
+                    
+                    buildingsChecked++;
+                    if (buildingsChecked >= BUILDINGS_PER_FRAME)
+                    {
+                        buildingsChecked = 0;
+                        yield return null; // 每检查几个建筑就暂停一帧
+                    }
+                }
+                else if (!onlyDefenseCrystalsLeft)
+                {
+                    onlyDefenseCrystalsLeft = true;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            
+            callback?.Invoke(closestPath, targetBuilding);
+        }
+        
+        /// <summary>
+        /// 同步版本
+        /// </summary>
         public List<Vector3> GetNearestPathToTarget(EnemyComponent enemy, out BuildingComponent targetBuilding)
         {
             targetBuilding = null;
@@ -202,13 +306,11 @@ namespace Core.Grid
             Vector2Int startGrid = WorldToGrid(enemy.transform.position);
             bool onlyDefenseCrystalsLeft = false;
             PathfindingNode closestNode = new PathfindingNode();
-            BuildingComponent currentTargetBuilding = null; // 记录当前目标建筑
-            BuildingComponent closestTargetBuilding = null; // 记录最接近的建筑
-            
+            BuildingComponent currentTargetBuilding = null;
             
             while (allBuildings.Count > 0)
             {
-                if (FindBestTargetGrid())
+                if (FindBestTargetGrid(allBuildings, startGrid, onlyDefenseCrystalsLeft, out currentTargetBuilding, out targetGrid))
                 {
                     path = FindPath(startGrid, targetGrid, out endNode, true);
                     if (path != null && IsAdjacent(endNode.gridPosition, targetGrid))
@@ -233,36 +335,38 @@ namespace Core.Grid
             }
             
             return closestPath;
+        }
+        
+        private bool FindBestTargetGrid(List<BuildingComponent> buildings, Vector2Int startGrid, bool onlyDefenseCrystals, out BuildingComponent targetBuilding, out Vector2Int targetGrid)
+        {
+            targetBuilding = null;
+            targetGrid = Vector2Int.zero;
+            int currentBuildingIndex = -1;
+            float minHCost = float.MaxValue;
             
-            bool FindBestTargetGrid()
+            for (int i = 0; i < buildings.Count; i++)
             {
-                int currentBuildingIndex = -1;
-                float minHCost = float.MaxValue;
+                var building = buildings[i];
+                if (!onlyDefenseCrystals && building.Data.BuildingType == BuildingType.DefenseCrystal) 
+                    continue;
                 
-                for (int i = 0; i < allBuildings.Count; i++)
+                var cost = PathfindingNode.OctileDistance(startGrid, building.GridPosition);
+                if (cost < minHCost)
                 {
-                    var building = allBuildings[i];
-                    if (!onlyDefenseCrystalsLeft && building.Data.BuildingType == BuildingType.DefenseCrystal) 
-                        continue; // 先找非DefenseCrystal建筑
-                    
-                    var cost = PathfindingNode.OctileDistance(startGrid, building.GridPosition);
-                    if (cost < minHCost)
-                    {
-                        targetGrid = building.GridPosition;
-                        currentBuildingIndex = i;
-                        minHCost = cost;
-                        currentTargetBuilding = building; // 记录目标建筑
-                    }
+                    targetGrid = building.GridPosition;
+                    currentBuildingIndex = i;
+                    minHCost = cost;
+                    targetBuilding = building;
                 }
-                
-                if (currentBuildingIndex != -1)
-                {
-                    allBuildings.RemoveAt(currentBuildingIndex);
-                    return true;
-                }
-                
-                return false;
             }
+            
+            if (currentBuildingIndex != -1)
+            {
+                buildings.RemoveAt(currentBuildingIndex);
+                return true;
+            }
+            
+            return false;
         }
 
         void OnEnemyStayed(Vector3 pos)
