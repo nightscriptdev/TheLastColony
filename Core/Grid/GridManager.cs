@@ -19,6 +19,9 @@ namespace Core.Grid
         [SerializeField] private int gridWidth = 28;
         [SerializeField] private int gridHeight = 16;
         [SerializeField] private Vector2 cellSize = new Vector2(1f, 1f);
+        
+        const int BUILDINGS_PER_FRAME = 4; // 每帧检查的建筑数量
+
         private Vector3 origin;
         
         private CellState[,] gridArray;
@@ -219,7 +222,6 @@ namespace Core.Grid
             PathfindingNode closestNode = new PathfindingNode();
             
             int buildingsChecked = 0;
-            const int BUILDINGS_PER_FRAME = 2; // 每帧检查的建筑数量
             
             while (allBuildings.Count > 0)
             {

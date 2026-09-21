@@ -14,7 +14,9 @@ namespace Core.Pathfinding
 
         public PathfindingNode()
         {
-            
+            this.gCost = int.MaxValue;
+            this.hCost = 0;
+            this.parent = null;
         }
         public PathfindingNode(Vector2Int gridPosition)
         {
