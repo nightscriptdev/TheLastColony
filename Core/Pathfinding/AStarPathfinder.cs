@@ -11,7 +11,7 @@ namespace Core.Pathfinding
     /// </summary>
     public class AStarPathfinder
     {
-        private const int MAX_NODES_PER_FRAME = 100; // 每帧处理的最大节点数
+        private const int MAX_NODES_PER_FRAME = 200; // 每帧处理的最大节点数
         
         public List<Vector3> FindPath(Vector2Int startGrid, Vector2Int targetGrid, out PathfindingNode endNode, bool findAdjacentIfBlocked = false)
         {
